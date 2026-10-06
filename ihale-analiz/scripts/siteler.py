@@ -28,7 +28,6 @@ import json
 import re
 import secrets
 import threading
-import webbrowser
 from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -40,6 +39,7 @@ PANEL_SURE_DK = 20
 HAZIR_SITELER = {
     "ekap": ("EKAP (Kamu İhale Kurumu)", "https://ekap.kik.gov.tr/EKAP/"),
     "ihalebul": ("ihalebul.com", "https://www.ihalebul.com/"),
+    "ihalesitesi": ("ihalesitesi.com", "https://www.ihalesitesi.com/"),
 }
 
 # Site girişi olmadan raporda sunulamayan bölümler
@@ -253,7 +253,8 @@ def panel(sistem: Path, tarayici_ac: bool = True) -> dict:
     print(f"Site giriş paneli açıldı: {adres}")
     print("Panelde siteleri ekleyip Bitir'e ya da Girişi atla'ya basın.", flush=True)
     if tarayici_ac:
-        webbrowser.open(adres)
+        import pencere
+        pencere.ac(adres, 820, 860, baslik=None)
     if not bitti.wait(PANEL_SURE_DK * 60):
         print(f"Panel {PANEL_SURE_DK} dakika içinde kapatılmadı; eklenen siteler kaydedildi.")
         if veri["durum"] == "sorulmadi" and veri["siteler"]:

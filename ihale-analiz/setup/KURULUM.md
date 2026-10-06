@@ -75,10 +75,11 @@ dosya olarak paylaşırsa aynı analizler yapılır.
    **Panel** kısayolunu koyar (Windows `Panel.lnk`, macOS `Panel.command`,
    Linux `Panel.desktop`). Kullanıcıya şunu anlat:
    - Panel kısayoluna çift tıklayınca ya da asistana "panel aç" deyince panel
-     tarayıcıda açılır (http://127.0.0.1:8765).
-     Panel yalnızca bu bilgisayarda çalışır, internete açılmaz.
-   - Chrome ya da Edge adres çubuğundaki **Uygulamayı yükle** ile panel masaüstü
-     uygulaması gibi kurulur; kendi simgesi ve penceresi olur.
+     kendi penceresinde açılır (http://127.0.0.1:8765); görev çubuğunda kendi
+     simgesi görünür. Panel yalnızca bu bilgisayarda çalışır, internete açılmaz.
+   - İhale ilanları, sonuçlar ve takip listesi kullanıcının takip sitesinden gelir
+     (Ayarlar > İhale takip sitesi). Panel kapatılınca simgesi gizli simgelerde
+     kalır; sonuç, analiz bitişi ve ihale günü için Windows bildirimi gelir.
    - Panelden ihale eklenir, dosyası yüklenir, ihale günü ve diğer tarihler
      ajandada izlenir, analiz süreci canlı görülür, HTML rapor okunur, PDF ve
      Excel indirilir.

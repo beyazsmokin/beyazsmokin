@@ -9,10 +9,12 @@ const GUNLER = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 const TUR_AD = { birim_fiyat: "Birim fiyatlı", anahtar_teslim: "Anahtar teslim", goturu_bedel: "Götürü bedel", karma: "Karma" };
 
 const S = { sabit: null, cevrimdisi: false, sayac: null, yoklama: null, ihaleFiltre: "aktif", ihaleAra: "",
-  ihaleSira: "tarih", ajandaAy: null, ajandaSecili: null, ajandaGorunum: "ay", detaySekme: "genel" };
+  ihaleSira: "tarih", ihaleSekme: "ilanlar", ajandaAy: null, ajandaSecili: null, ajandaGorunum: "ay", detaySekme: "genel" };
 
 const IKON = {
   gosterge: '<path d="M3 13h8V3H3zm10 8h8V11h-8zM3 21h8v-6H3zm10-18v6h8V3z"/>',
+  ilanlar: '<path d="M4 4h16v4H4zM4 12h16M4 16h10"/>',
+  sonuclar: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3a3 3 0 0 1-3 4M7 5H4a3 3 0 0 0 3 4"/>',
   ihaleler: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>',
   ajanda: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
   raporlar: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M8 7h8M8 11h6"/>',
@@ -22,7 +24,8 @@ const IKON = {
 };
 const svg = (ad) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${IKON[ad]}</svg>`;
 const SAYFALAR = [
-  ["gosterge", "Gösterge", ""], ["ihaleler", "İhaleler", "ihaleler"], ["ajanda", "Ajanda", "ajanda"],
+  ["gosterge", "Gösterge", ""], ["ilanlar", "İhale İlanları", "ilanlar"], ["sonuclar", "İhale Sonuçları", "sonuclar"],
+  ["ihaleler", "Takip Ettiklerim", "ihaleler"], ["ajanda", "Ajanda", "ajanda"],
   ["raporlar", "Raporlar", "raporlar"], ["taramalar", "Taramalar", "taramalar"], ["ogrenme", "Öğrenme", "ogrenme"],
   ["ayarlar", "Ayarlar", "ayarlar"],
 ];
@@ -124,7 +127,8 @@ async function yonlendir() {
   const kap = $("#icerik");
   try {
     if (!S.sabit) S.sabit = await api("sabitler");
-    const sayfalar = { "": gosterge, ihaleler, ihale: ihaleDetay, ajanda, raporlar, taramalar,
+    const sekme = (k) => (kap2, sq) => { S.ihaleSekme = k; return ihaleler(kap2, sq); };
+    const sayfalar = { "": gosterge, ilanlar: sekme("ilanlar"), sonuclar: sekme("sonuclar"), ihaleler: sekme("takip"), ihale: ihaleDetay, ajanda, raporlar, taramalar,
       tarama: taramaDetay, ogrenme, ayarlar };
     await (sayfalar[sayfa] || gosterge)(kap, sorgu);
     if (sorgu.get("yeni")) ihaleFormu();
@@ -148,15 +152,14 @@ async function gosterge(kap) {
   const b = o.basari;
   menuCiz("", { ihaleler: o.sayac.hesaplanacak + o.sayac.analizde || "" });
   kap.innerHTML = `
-  <div class="izgara k4">
+  <div class="izgara k3">
     <div class="kart gosterge"><small>Açık ihale</small><b>${o.acik_sayi}</b><span>Toplam ${kisaPara(o.acik_butce)} yaklaşık maliyet</span></div>
     <div class="kart gosterge"><small>7 gün içinde ihale</small><b>${buHafta}</b><span>${o.yaklasan.length} yaklaşan kayıt (14 gün)</span></div>
     <div class="kart gosterge"><small>Analiz sürecinde</small><b>${o.sayac.hesaplanacak + o.sayac.analizde}</b><span>${o.sayac.hesaplanacak} kuyrukta, ${o.sayac.analizde} çalışıyor</span></div>
-    <div class="kart gosterge"><small>Kazanma oranı</small><b>${b.oran == null ? "—" : "%" + b.oran}</b><span>${b.kazanilan} kazanıldı, ${b.kaybedilen} kaybedildi</span></div>
   </div>
   <div class="izgara k3-1" style="margin-top:16px">
     <div class="kart"><h2>Yaklaşan tarihler <a class="sag" href="#/ajanda">Ajanda</a></h2>
-      <div class="liste">${o.yaklasan.length ? o.yaklasan.map(olaySatir).join("") : '<div class="bos">Önümüzdeki 14 günde kayıt yok. İhale eklerken ihale tarihini girin; ajanda kendiliğinden dolar.</div>'}</div>
+      <div class="liste">${o.yaklasan.length ? o.yaklasan.map(olaySatir).join("") : '<div class="bos">Önümüzdeki 14 günde kayıt yok. İhale eklediğinizde ihale günü ajandaya kendiliğinden düşer.</div>'}</div>
     </div>
     <div class="izgara" style="align-content:start">
       <div class="kart"><h2>Analiz süreci</h2>
@@ -194,60 +197,192 @@ const FILTRELER = {
   tumu: ["Tümü", () => true],
 };
 
-async function ihaleler(kap) {
-  baslik("İhaleler");
-  const liste = await api("ihaleler");
-  const ciz = () => {
-    const ara = S.ihaleAra.toLocaleLowerCase("tr");
-    let s = liste.filter((t) => FILTRELER[S.ihaleFiltre][1](t.durum))
-      .filter((t) => !ara || [t.kod, t.ad, t.idare, t.il].some((v) => (v || "").toLocaleLowerCase("tr").includes(ara)));
-    const sira = { tarih: (a, b) => (a.ihale_tarihi || "9").localeCompare(b.ihale_tarihi || "9"),
-      maliyet: (a, b) => (b.yaklasik || 0) - (a.yaklasik || 0), oncelik: (a, b) => a.oncelik - b.oncelik,
-      eklenme: (a, b) => (b.eklenme || "").localeCompare(a.eklenme || "") }[S.ihaleSira];
-    s = s.sort(sira);
-    $("#ihale-tablo").innerHTML = s.length ? `<div class="tablo-kap"><table class="tablo"><thead><tr>
-      <th>İhale</th><th class="gizle-mobil">İdare</th><th data-sirala="tarih">İhale tarihi</th>
-      <th class="sayi gizle-mobil" data-sirala="maliyet">Yaklaşık maliyet</th><th>Durum</th></tr></thead><tbody>
-      ${s.map((t) => `<tr data-git="#/ihale/${kodUrl(t.kod)}"><td><b>${e(t.ad || t.kod)}</b><small>${e(t.kod)} <span class="oncelik">${"★".repeat(4 - (t.oncelik || 2))}</span></small></td>
-      <td class="gizle-mobil">${e(t.idare || "—")}<small>${e(t.il || "")}</small></td>
-      <td>${tarihYaz(t.ihale_tarihi)}<small>${t.ihale_tarihi && !S.sabit.kapali.includes(t.durum) ? kalanYaz(t.ihale_tarihi) : ""}</small></td>
-      <td class="sayi gizle-mobil">${para(t.yaklasik)}</td><td>${durumRozet(t.durum)}</td></tr>`).join("")}
-      </tbody></table></div>` : `<div class="bos">${liste.length ? "Bu filtrede ihale yok." : "Henüz ihale yok. <b>Yeni ihale</b> ile ekleyin ya da dosyaları Gelen Dosyalar klasörüne bırakıp asistanınızdan analiz isteyin."}</div>`;
-    $$(".cip", kap).forEach((c) => c.classList.toggle("secili", c.dataset.filtre === S.ihaleFiltre));
+const IHALE_SEKMELERI = [["ilanlar", "İhale İlanları"], ["sonuclar", "İhale Sonuçları"], ["takip", "Takip Ettiklerim"]];
+
+async function ihaleler(kap, sorgu) {
+  S.ihaleSekme = S.ihaleSekme || "takip";
+  baslik(Object.fromEntries(IHALE_SEKMELERI)[S.ihaleSekme]);
+  let liste = await api("ihaleler");
+  const takipKodu = (ikn) => {
+    const t = liste.find((x) => x.ikn === ikn || x.kod === ikn || x.kod === (ikn || "").replace(/\//g, "-"));
+    return t && t.kod;
   };
-  const say = (k) => liste.filter((t) => FILTRELER[k][1](t.durum)).length;
-  kap.innerHTML = `<div class="araclar">
-      <div class="cipler">${Object.entries(FILTRELER).map(([k, [ad]]) => `<button class="cip" data-filtre="${k}">${ad}<span class="n">${say(k)}</span></button>`).join("")}</div>
-      <input type="search" id="ihale-ara" placeholder="Ara: ad, kod, idare, il" value="${e(S.ihaleAra)}">
-      <select id="ihale-sira" style="width:auto"><option value="tarih">İhale tarihine göre</option><option value="maliyet">Maliyete göre</option>
-      <option value="oncelik">Önceliğe göre</option><option value="eklenme">Son eklenen</option></select>
-      <span style="flex:1"></span>
-      <button class="dugme" data-eylem="csv">CSV indir</button>
-      <button class="dugme ana-d" data-eylem="yeni-ihale">Yeni ihale</button></div>
-    <div class="kart" id="ihale-tablo" style="padding:6px 8px"></div>`;
-  $("#ihale-sira").value = S.ihaleSira;
+  const kalanHucre = (iso) => iso ? kalanYaz(iso) : "";
+  const veri = { ilanlar: { liste: [] }, sonuclar: { liste: [] } };
+  const ILLER = ["ADANA", "ADIYAMAN", "AFYONKARAHİSAR", "AĞRI", "AKSARAY", "AMASYA", "ANKARA", "ANTALYA", "ARDAHAN", "ARTVİN", "AYDIN",
+    "BALIKESİR", "BARTIN", "BATMAN", "BAYBURT", "BİLECİK", "BİNGÖL", "BİTLİS", "BOLU", "BURDUR", "BURSA", "ÇANAKKALE", "ÇANKIRI",
+    "ÇORUM", "DENİZLİ", "DİYARBAKIR", "DÜZCE", "EDİRNE", "ELAZIĞ", "ERZİNCAN", "ERZURUM", "ESKİŞEHİR", "GAZİANTEP", "GİRESUN",
+    "GÜMÜŞHANE", "HAKKARİ", "HATAY", "IĞDIR", "ISPARTA", "İSTANBUL", "İZMİR", "KAHRAMANMARAŞ", "KARABÜK", "KARAMAN", "KARS",
+    "KASTAMONU", "KAYSERİ", "KIRIKKALE", "KIRKLARELİ", "KIRŞEHİR", "KİLİS", "KOCAELİ", "KONYA", "KÜTAHYA", "MALATYA", "MANİSA",
+    "MARDİN", "MERSİN", "MUĞLA", "MUŞ", "NEVŞEHİR", "NİĞDE", "ORDU", "OSMANİYE", "RİZE", "SAKARYA", "SAMSUN", "SİİRT", "SİNOP",
+    "SİVAS", "ŞANLIURFA", "ŞIRNAK", "TEKİRDAĞ", "TOKAT", "TRABZON", "TUNCELİ", "UŞAK", "VAN", "YALOVA", "YOZGAT", "ZONGULDAK"];
+  S.siteFiltre = S.siteFiltre || { ilanlar: {}, sonuclar: {} };
+  const filtreAraclari = (tur) => {
+    const f = S.siteFiltre[tur];
+    const metin = (ad, yer) => `<input type="search" data-sf="${ad}" placeholder="${yer}" value="${e(f[ad] || "")}">`;
+    const tarih = (ad, yer) => `<label class="sf-tarih"><span>${yer}</span><span class="sf-aralik"><input type="date" data-sf="${ad}_s" value="${e(f[ad + "_s"] || "")}"><input type="date" data-sf="${ad}_e" value="${e(f[ad + "_e"] || "")}"></span></label>`;
+    return `<form class="site-filtre" id="site-filtre">
+      ${metin("qstr", "Anahtar kelime")}${metin("ih_ihale_adi", "İşin adına göre")}${metin("ih_idare_adi", "Kuruma göre")}
+      ${tur === "sonuclar" ? metin("ih_kazanan", "Kazanan firmaya göre") : metin("ih_benzeris", "Benzer iş (ör. A9)")}
+      ${metin("ih_kayit_no", "İKN (2026/00000)")}
+      <select data-sf="ih_turu"><option value="">Tüm ihale türleri</option>${[["YAPIM", "Yapım"], ["HİZMET", "Hizmet"], ["DANIŞMANLIK", "Danışmanlık"], ["MAL", "Mal alımı"]]
+        .map(([k, v]) => `<option value="${k}" ${f.ih_turu === k ? "selected" : ""}>${v}</option>`).join("")}</select>
+      <select data-sf="ih_sehir"><option value="">Tüm şehirler</option>${ILLER.map((il) => `<option ${f.ih_sehir === il ? "selected" : ""}>${il}</option>`).join("")}</select>
+      ${tarih("ih_ilan_tarihi", tur === "sonuclar" ? "Sonuç ilanı tarihi" : "İlan tarihi")}${tarih("ih_tarihi", "İhale tarihi")}
+      <div class="dugmeler"><button class="dugme" type="button" data-eylem="filtre-temizle">Temizle</button>
+        <button class="dugme ana-d" data-eylem="site-getir">Ara</button></div>
+      <p class="not sf-not">Tarih seçilmezse son 7 günün ${tur === "sonuclar" ? "sonuçları" : "ilanları"} gelir.</p></form><div id="site-liste"></div>`;
+  };
+  // --- Takip ettiklerim ---------------------------------------------------------------
+  const takipCiz = () => {
+    const ara = S.ihaleAra.toLocaleLowerCase("tr");
+    const s = liste.filter((t) => FILTRELER[S.ihaleFiltre][1](t.durum))
+      .filter((t) => !ara || [t.kod, t.ad, t.idare, t.il].some((v) => (v || "").toLocaleLowerCase("tr").includes(ara)))
+      .sort((a, b) => (a.ihale_tarihi || "9").localeCompare(b.ihale_tarihi || "9"));
+    $("#ihale-tablo").innerHTML = s.length ? `<div class="tablo-kap"><table class="tablo site-tablo"><thead><tr>
+      <th>İKN</th><th>İhale tarihi</th><th class="gizle-mobil">İdare</th><th>İhale adı</th><th class="gizle-mobil">Şehir</th><th>Kalan</th><th>Durum</th></tr></thead><tbody>
+      ${s.map((t) => `<tr data-git="#/ihale/${kodUrl(t.kod)}"><td class="nowrap">${e(t.ikn || t.kod)}</td>
+        <td class="nowrap">${tarihYaz(t.ihale_tarihi)}</td><td class="gizle-mobil">${e(t.idare || "—")}</td>
+        <td><b>${e(t.ad || t.kod)}</b></td><td class="gizle-mobil">${e(t.il || "")}</td>
+        <td class="nowrap">${t.ihale_tarihi && !S.sabit.kapali.includes(t.durum) ? kalanHucre(t.ihale_tarihi) : ""}</td>
+        <td>${durumRozet(t.durum)}</td></tr>`).join("")}
+      </tbody></table></div>` : `<div class="bos">${liste.length ? "Bu filtrede ihale yok." : "Takip listeniz boş. İhale ilanlarından <b>Takibe ekle</b> deyin; sitedeki takip listenize de eklenir."}</div>`;
+    $$(".cip[data-filtre]", kap).forEach((c) => c.classList.toggle("secili", c.dataset.filtre === S.ihaleFiltre));
+  };
+
+  // --- İlanlar ve sonuçlar (takip sitesinden) ------------------------------------------
+  const siteCiz = (mesaj = "") => {
+    const tur = S.ihaleSekme;
+    const l = veri[tur].liste || [];
+    const kutu = $("#site-liste");
+    if (!kutu) return;
+    let tablo = "";
+    if (l.length && tur === "ilanlar") {
+      tablo = `<div class="tablo-kap"><table class="tablo site-tablo"><thead><tr>
+        <th>İKN</th><th>İhale tarihi</th><th class="gizle-mobil">İdare</th><th>İhale adı</th><th class="gizle-mobil">Şehir</th>
+        <th class="gizle-mobil">Benzer iş</th><th>Kalan</th><th></th></tr></thead><tbody>
+        ${l.map((r, i) => `<tr data-ilan="${i}"><td class="nowrap">${e(r.ikn)}</td><td class="nowrap">${tarihYaz(r.ihale_tarihi)}</td>
+          <td class="gizle-mobil">${e(r.idare || "—")}</td><td><b>${e(r.ad)}</b></td><td class="gizle-mobil">${e(r.il || "")}</td>
+          <td class="gizle-mobil">${e(r.benzer_is || "")}</td><td class="nowrap">${kalanHucre(r.ihale_tarihi)}</td>
+          <td class="nowrap">${takipKodu(r.ikn) ? '<span class="rozet-d d-takipte">Takipte</span>' : `<button class="dugme kucuk" data-ilan-al="${i}">Takibe ekle</button>`}
+            <button class="dugme kucuk" data-ilan-indir="${i}" title="EKAP ihale dosyasını indir">Dosya</button></td></tr>`).join("")}
+        </tbody></table></div>`;
+    } else if (l.length) {
+      tablo = `<div class="tablo-kap"><table class="tablo site-tablo"><thead><tr>
+        <th>İKN</th><th>İhale tarihi</th><th class="gizle-mobil">İdare</th><th>İhale adı</th><th class="gizle-mobil">Şehir</th>
+        <th>Kazanan</th><th class="sayi">Sözleşme bedeli</th><th class="sayi">Tenzilat</th></tr></thead><tbody>
+        ${l.map((r, i) => `<tr data-sonuc="${i}"><td class="nowrap">${e(r.ikn)}${takipKodu(r.ikn) ? ' <span class="rozet-d d-takipte">Takipte</span>' : ""}</td>
+          <td class="nowrap">${tarihYaz(r.ihale_tarihi)}</td><td class="gizle-mobil">${e(r.idare || "—")}</td><td><b>${e(r.ad)}</b></td>
+          <td class="gizle-mobil">${e(r.il || "")}</td><td>${e(r.kazanan || "—")}</td><td class="sayi nowrap">${e(r.sozlesme_bedeli || "—")}</td>
+          <td class="sayi nowrap">${r.tenzilat ? "%" + e(r.tenzilat) : "—"}</td></tr>`).join("")}
+        </tbody></table></div>`;
+    }
+    kutu.innerHTML = (mesaj ? `<p class="not">${e(mesaj)}</p>` : "") + tablo +
+      (l.length ? `<p class="not">${e(veri[tur].kaynak || "")} · ${l.length} kayıt · ${e(zamanYaz(veri[tur].zaman))}</p>`
+        : mesaj ? "" : `<p class="not">Liste ihale takip sitenizden gelir. Site eklemediyseniz Ayarlar'dan ekleyin.</p>`);
+  };
+  const siteGetir = (tur = S.ihaleSekme) => {
+    const d = $('[data-eylem="site-getir"]');
+    if (d) d.disabled = true;
+    if (tur === S.ihaleSekme) siteCiz(tur === "ilanlar" ? "İlanlar takip sitenizden alınıyor…" : "Sonuçlar takip sitenizden alınıyor…");
+    if ($("#site-filtre") && tur === S.ihaleSekme) {
+      S.siteFiltre[tur] = Object.fromEntries($$("[data-sf]").map((x) => [x.dataset.sf, x.value]).filter(([, v]) => v));
+    }
+    return api(`site/${tur}`, { method: "POST", govde: { filtre: S.siteFiltre[tur], gun: 7 } })
+      .then((v) => { veri[tur] = v; if (tur === S.ihaleSekme) siteCiz(v.liste.length ? "" : "Bu aramayla kayıt bulunamadı."); })
+      .catch((h) => { if (tur === S.ihaleSekme) siteCiz(h.message); })
+      .finally(() => { const d2 = $('[data-eylem="site-getir"]'); if (d2) d2.disabled = false; });
+  };
+  // Panel açılınca liste kendiliğinden gelir; yarım saatten eskiyse yenilenir
+  const siteYukle = (tur) => api(`site/${tur}`).then((v) => {
+    veri[tur] = v;
+    if (tur === S.ihaleSekme) siteCiz();
+    if (!v.zaman || Date.now() - new Date(v.zaman).getTime() > 30 * 60 * 1000) siteGetir(tur);
+  }).catch(() => siteGetir(tur));
+
+  const sekmeCiz = () => {
+    $("#ihale-sekme").innerHTML = S.ihaleSekme === "takip" ? `<div class="araclar" style="margin:0 0 10px">
+        <div class="cipler">${Object.entries(FILTRELER).map(([k, [ad]]) => `<button class="cip" data-filtre="${k}">${ad}<span class="n">${liste.filter((t) => FILTRELER[k][1](t.durum)).length}</span></button>`).join("")}</div>
+        <input type="search" id="ihale-ara" placeholder="Ara: İKN, ad, idare, şehir" value="${e(S.ihaleAra)}"><span style="flex:1"></span><span class="not" id="esitle-durum"></span></div>
+      <div id="ihale-tablo"></div>` : filtreAraclari(S.ihaleSekme);
+    if (S.ihaleSekme === "takip") {
+      $("#ihale-ara").oninput = (ev) => { S.ihaleAra = ev.target.value; takipCiz(); };
+      takipCiz();
+    } else {
+      $("#site-filtre").onsubmit = (ev) => { ev.preventDefault(); siteGetir(); };
+      siteCiz();
+    }
+  };
+  kap.innerHTML = `<div class="kart" id="ihale-sekme"></div>`;
+  sekmeCiz();
+  if (S.ihaleSekme !== "takip") siteYukle(S.ihaleSekme);
+  // Sitedeki takip listesi panele alınır
+  api("site/esitle", { method: "POST" }).then(async (v) => {
+    const d = $("#esitle-durum");
+    if (d) d.textContent = `Sitedeki takip listesiyle eşit (${v.sitede} ihale)`;
+    if (v.eklenen.length) { liste = await api("ihaleler"); if (S.ihaleSekme === "takip") sekmeCiz(); bildir(`Sitedeki takip listesinden ${v.eklenen.length} ihale eklendi`); }
+  }).catch(() => {});
+
+  const takibeAl = async (r) => {
+    const s = await api("ihaleler", { method: "POST", govde: { kod: r.ikn, ad: r.ad, idare: r.idare, il: r.il,
+      ihale_tarihi: r.ihale_tarihi, kaynak_url: r.kaynak_url, notlar: r.notlar, analiz: true } });
+    bildir(`${r.ad} takibe alındı; ön inceleme kuyruğa alındı.${s.site || ""}`);
+    liste = await api("ihaleler");
+    return s.kod;
+  };
+  const dosyaIndir = async (r, dugme) => {
+    dugme.disabled = true;
+    const metin = dugme.textContent;
+    dugme.textContent = "İndiriliyor…";
+    try {
+      const kod = takipKodu(r.ikn) || (await takibeAl(r));
+      bildir((await ihaleDosyasiIndir(kod)).mesaj);
+      S.detaySekme = "dosyalar";
+      location.hash = `#/ihale/${kodUrl(kod)}`;
+    } catch (h) { bildir(h.message, true); dugme.disabled = false; dugme.textContent = metin; }
+  };
+  const ilanPenceresi = (r) => {
+    const pen = $("#pencere");
+    const satir = (ad, v) => v ? `<dt>${ad}</dt><dd>${v}</dd>` : "";
+    const kod = takipKodu(r.ikn);
+    pen.innerHTML = `<form method="dialog" class="ilan-pencere"><h2>İhale ilanı</h2>
+      <dl class="bilgi">${satir("İhale kayıt no", e(r.ikn))}${satir("Kurum", e(r.idare))}${satir("İhale adı", `<b>${e(r.ad)}</b>`)}
+        ${satir("İhale tarihi", r.ihale_tarihi ? `${tarihYaz(r.ihale_tarihi)} ${kalanHucre(r.ihale_tarihi)}` : "")}${satir("Şehir", e(r.il))}
+        ${satir("Tür", e(r.ihale_tipi))}${satir("Benzer iş", e(r.benzer_is))}${satir("Süre", r.sure ? e(r.sure) + " gün" : "")}
+        ${satir("Teminat", e(r.teminat))}${satir("İtiraz bedeli", r.itiraz_bedeli ? e(r.itiraz_bedeli) + " ₺" : "")}${satir("İlan tarihi", e(r.ilan_tarihi))}</dl>
+      <div class="dugmeler">
+        ${kod ? `<a class="dugme" href="#/ihale/${kodUrl(kod)}">Takipte · aç</a>` : '<button class="dugme ana-d" value="al" data-p="al">Takibe ekle</button>'}
+        <button class="dugme" value="indir" data-p="indir">EKAP dosyasını indir</button>
+        <a class="dugme" href="${e(r.kaynak_url)}" target="_blank" rel="noopener">Sitede aç</a>
+        <button class="dugme" value="kapat">Kapat</button></div></form>`;
+    pen.showModal();
+    pen.querySelector("form").onsubmit = (ev) => {
+      const p = ev.submitter?.dataset.p;
+      if (p === "al") { ev.preventDefault(); ev.submitter.disabled = true; takibeAl(r).then(() => { pen.close(); siteCiz(); }).catch((h) => bildir(h.message, true)); }
+      if (p === "indir") { ev.preventDefault(); pen.close(); dosyaIndir(r, ev.submitter); }
+    };
+    pen.querySelector('a[href^="#/ihale"]')?.addEventListener("click", () => pen.close());
+  };
   kap.onclick = (ev) => {
     const f = ev.target.closest("[data-filtre]");
-    if (f) { S.ihaleFiltre = f.dataset.filtre; ciz(); }
-    const sr = ev.target.closest("[data-sirala]");
-    if (sr) { S.ihaleSira = sr.dataset.sirala; $("#ihale-sira").value = S.ihaleSira; ciz(); }
+    if (f) { S.ihaleFiltre = f.dataset.filtre; return takipCiz(); }
+    if (ev.target.closest('[data-eylem="filtre-temizle"]')) { S.siteFiltre[S.ihaleSekme] = {}; sekmeCiz(); return siteGetir(); }
+    const al = ev.target.closest("[data-ilan-al]");
+    if (al) {
+      al.disabled = true;
+      takibeAl(veri.ilanlar.liste[+al.dataset.ilanAl]).then(() => siteCiz())
+        .catch((h) => { bildir(h.message, true); al.disabled = false; });
+      return;
+    }
+    const ind = ev.target.closest("[data-ilan-indir]");
+    if (ind) return dosyaIndir(veri.ilanlar.liste[+ind.dataset.ilanIndir], ind);
+    const ilan = ev.target.closest("[data-ilan]");
+    if (ilan) return ilanPenceresi(veri.ilanlar.liste[+ilan.dataset.ilan]);
+    const sn = ev.target.closest("[data-sonuc]");
+    if (sn) return sonucPenceresi(veri.sonuclar.liste[+sn.dataset.sonuc]);
     const tr = ev.target.closest("[data-git]");
     if (tr) location.hash = tr.dataset.git;
-    if (ev.target.closest('[data-eylem="csv"]')) csvIndir(liste);
   };
-  $("#ihale-ara").oninput = (ev) => { S.ihaleAra = ev.target.value; ciz(); };
-  $("#ihale-sira").onchange = (ev) => { S.ihaleSira = ev.target.value; ciz(); };
-  ciz();
-}
-
-function csvIndir(liste) {
-  const kolon = ["kod", "ikn", "ad", "idare", "il", "tur", "yaklasik", "ihale_tarihi", "durum", "oncelik", "teklif", "kazanan_teklif", "notlar"];
-  const satir = [kolon.join(";"), ...liste.map((t) => kolon.map((k) => `"${String(t[k] ?? "").replace(/"/g, '""')}"`).join(";"))];
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob(["﻿" + satir.join("\r\n")], { type: "text/csv" }));
-  a.download = `ihaleler-${isoGun(new Date())}.csv`;
-  a.click();
-  URL.revokeObjectURL(a.href);
 }
 
 // --- İhale formu -------------------------------------------------------------------
@@ -256,11 +391,15 @@ function ihaleFormu(t = null, onEk = {}) {
   const d = { ...(t || {}), ...onEk };
   const pen = $("#pencere");
   const durumlar = Object.entries(S.sabit.durumlar).map(([k, v]) => `<option value="${k}">${e(v)}</option>`).join("");
+  // Yeni ihalede yalnızca İKN istenir; diğer bilgiler EKAP'tan gelir. EKAP'a ulaşılamazsa alanlar açılır.
+  const elle = !!t || !!d.ad;
   pen.innerHTML = `<form method="dialog" id="ihale-form">
     <h2>${t ? "İhaleyi düzenle" : "Yeni ihale"}</h2>
+    ${t ? "" : `<p class="not" style="margin:0 0 12px">İKN'yi yazın; ihalenin adı, idaresi, ili ve tarihi takip sitenizden alınır.</p>`}
     <div class="izgara-form">
-      <label class="alan genis">İhale adı (işin adı)<input type="text" name="ad" required value="${e(d.ad)}" placeholder="ör. Okul binası güçlendirme işi"></label>
-      ${t ? "" : `<label class="alan">İKN ya da kısa kod<input type="text" name="kod" value="${e(d.kod)}" placeholder="2026/123456"></label>`}
+      ${t ? "" : `<label class="alan genis">İKN<input type="text" name="kod" required value="${e(d.kod)}" placeholder="2026/123456" autocomplete="off"></label>`}
+      <div class="izgara-form genis" id="elle-alanlar" ${elle ? "" : "hidden"}>
+      <label class="alan genis">İhale adı (işin adı)<input type="text" name="ad" value="${e(d.ad)}" placeholder="ör. Okul binası güçlendirme işi"></label>
       <label class="alan">İdare<input type="text" name="idare" value="${e(d.idare)}"></label>
       <label class="alan">İl<input type="text" name="il" value="${e(d.il)}"></label>
       <label class="alan">Teklif türü<select name="tur"><option value="">Bilinmiyor</option>${Object.entries(TUR_AD).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select></label>
@@ -270,12 +409,21 @@ function ihaleFormu(t = null, onEk = {}) {
       ${t ? `<label class="alan">Durum<select name="durum">${durumlar}</select></label>` : ""}
       <label class="alan genis">İlan bağlantısı<input type="url" name="kaynak_url" value="${e(d.kaynak_url)}" placeholder="https://"></label>
       <label class="alan genis">Notlar<textarea name="notlar">${e(d.notlar)}</textarea></label>
+      </div>
       ${t ? "" : `<label class="alan genis">İhale dosyaları (şartname, cetvel, proje; zip olabilir)<input type="file" name="dosyalar" multiple></label>
-      <label class="onay genis"><input type="checkbox" name="analiz"> Ekledikten sonra analizi başlat (hesaplanacak)</label>`}
+      <label class="onay genis"><input type="checkbox" name="analiz" checked> Ekledikten sonra ön incelemeyi başlat</label>`}
     </div>
+    <p class="not" id="form-durum" hidden></p>
     <div class="dugmeler"><button class="dugme" value="iptal" formnovalidate>Vazgeç</button><button class="dugme ana-d" value="kaydet">${t ? "Kaydet" : "Ekle"}</button></div>
   </form>`;
   const f = $("#ihale-form");
+  const alanlar = $("#elle-alanlar");
+  const durum = (metin, hata = false) => {
+    const p = $("#form-durum");
+    p.hidden = !metin;
+    p.textContent = metin || "";
+    p.style.color = hata ? "var(--kirmizi)" : "";
+  };
   f.tur.value = d.tur || "";
   f.oncelik.value = d.oncelik || 2;
   if (t) f.durum.value = d.durum;
@@ -283,32 +431,86 @@ function ihaleFormu(t = null, onEk = {}) {
   f.onsubmit = async (ev) => {
     if (ev.submitter?.value !== "kaydet") return;
     ev.preventDefault();
-    const veri = Object.fromEntries(["ad", "kod", "idare", "il", "tur", "yaklasik", "ihale_tarihi", "oncelik", "durum", "kaynak_url", "notlar"]
-      .filter((k) => f[k]).map((k) => [k, f[k].value]));
-    if (veri.yaklasik) veri.yaklasik = veri.yaklasik.replace(/\s|₺/g, "");
     const dugme = ev.submitter;
     dugme.disabled = true;
+    const alanVeri = () => {
+      const v = Object.fromEntries(["ad", "kod", "idare", "il", "tur", "yaklasik", "ihale_tarihi", "oncelik", "durum", "kaynak_url", "notlar"]
+        .filter((k) => f[k]).map((k) => [k, f[k].value]));
+      if (v.yaklasik) v.yaklasik = v.yaklasik.replace(/\s|₺/g, "");
+      return v;
+    };
     try {
       if (t) {
-        await api(`ihaleler/${kodUrl(t.kod)}`, { method: "PUT", govde: veri });
+        await api(`ihaleler/${kodUrl(t.kod)}`, { method: "PUT", govde: alanVeri() });
         pen.close();
         bildir("Kaydedildi");
         yonlendir();
-      } else {
-        const { kod } = await api("ihaleler", { method: "POST", govde: veri });
-        for (const dosya of f.dosyalar.files) await dosyaYukle(kod, dosya);
-        if (f.analiz.checked) {
-          const s = await api(`ihaleler/${kodUrl(kod)}/analiz`, { method: "POST" });
-          bildir(s.mesaj);
-        } else bildir("İhale takibe alındı");
-        pen.close();
-        location.hash = `#/ihale/${kodUrl(kod)}`;
+        return;
       }
+      let veri;
+      if (alanlar.hidden) {
+        durum("İhale bilgileri takip sitenizden alınıyor…");
+        let b;
+        try {
+          b = await api("site/bilgi", { method: "POST", govde: { ikn: f.kod.value } });
+        } catch (h) {
+          alanlar.hidden = false;
+          durum(`${h.message} Bilgileri aşağıya elle yazıp Ekle'ye basabilirsiniz.`, true);
+          dugme.disabled = false;
+          return;
+        }
+        veri = { kod: b.ikn, ad: b.ad, idare: b.idare, il: b.il, ihale_tarihi: b.ihale_tarihi,
+          kaynak_url: b.kaynak_url, notlar: b.notlar, oncelik: f.oncelik.value, analiz: f.analiz.checked };
+      } else {
+        veri = alanVeri();
+        if (!veri.ad) { durum("İhale adını yazın.", true); dugme.disabled = false; return; }
+      }
+      durum("İhale ekleniyor…");
+      const { kod } = await api("ihaleler", { method: "POST", govde: veri });
+      for (const dosya of f.dosyalar.files) await dosyaYukle(kod, dosya);
+      if (f.analiz.checked && !veri.analiz) {
+        const s = await api(`ihaleler/${kodUrl(kod)}/analiz`, { method: "POST" });
+        bildir(s.mesaj);
+      } else bildir(`${veri.ad || kod} takibe alındı`);
+      pen.close();
+      location.hash = `#/ihale/${kodUrl(kod)}`;
     } catch (h) {
-      bildir(h.message, true);
+      durum(h.message, true);
       dugme.disabled = false;
     }
   };
+}
+
+// EKAP doküman sayfasındaki güvenlik kodu resmini gösterir; kodu kullanıcı yazar.
+async function ihaleDosyasiIndir(kod) {
+  bildir("EKAP'ın doküman sayfası ayrı bir pencerede açılıyor. Güvenlik kodu burada sorulacak.");
+  let bitti = false;
+  const istek = api("site/dosya", { method: "POST", govde: { kod } }).finally(() => { bitti = true; });
+  (async () => {
+    let gosterilen = null;
+    while (!bitti) {
+      await new Promise((r) => setTimeout(r, 1000));
+      const k = await api("site/kod").catch(() => ({}));
+      if (k.bekliyor && k.resim !== gosterilen) {
+        gosterilen = k.resim;
+        const pen = $("#pencere");
+        pen.innerHTML = `<form method="dialog" id="kod-form"><h2>EKAP güvenlik kodu</h2>
+          <p class="not">Resimdeki kodu yazın; ihale dosyası ardından indirilir.</p>
+          <img src="${e(k.resim)}" alt="Güvenlik kodu" style="display:block;margin:12px 0;max-width:100%;border-radius:6px;background:#fff">
+          <label class="alan">Kod<input type="text" name="kod" required autocomplete="off" autofocus></label>
+          <div class="dugmeler"><button class="dugme" value="iptal" formnovalidate>Vazgeç</button><button class="dugme ana-d" value="gonder">Gönder</button></div></form>`;
+        pen.showModal();
+        const f = $("#kod-form");
+        f.onsubmit = async (ev) => {
+          ev.preventDefault();
+          const kodMetin = ev.submitter?.value === "gonder" ? f.kod.value : "";
+          pen.close();
+          await api("site/kod", { method: "POST", govde: { kod: kodMetin } }).catch(() => {});
+        };
+      }
+    }
+  })();
+  return istek;
 }
 
 async function dosyaYukle(kod, dosya) {
@@ -344,6 +546,7 @@ async function ihaleDetay(kap, sorgu) {
     <span>${durumRozet(t.durum)}</span>${t.ihale_tarihi ? `<span>İhale: <b>${tarihYaz(t.ihale_tarihi)}</b> ${kapali ? "" : kalanYaz(t.ihale_tarihi)}</span>` : ""}</div></div>
     <div class="dugmeler">
       ${kapali ? "" : `<button class="dugme ana-d" data-eylem="analiz" ${surecte ? "disabled" : ""}>${surecte ? "Analiz sürüyor" : md ? "Yeniden analiz et" : "Analizi başlat"}</button>`}
+      <button class="dugme" data-eylem="dosya-indir">İhale dosyasını indir</button>
       <button class="dugme" data-eylem="duzenle">Düzenle</button>
       <button class="dugme" data-eylem="klasor">Klasörü aç</button>
       <button class="dugme tehlike" data-eylem="sil">Takipten çıkar</button>
@@ -457,6 +660,15 @@ async function ihaleDetay(kap, sorgu) {
         bildir(r.mesaj);
         S.detaySekme = "surec";
         yonlendir();
+      } else if (ey === "dosya-indir") {
+        const d = ev.target.closest("button");
+        d.disabled = true;
+        d.textContent = "İndiriliyor…";
+        try {
+          bildir((await ihaleDosyasiIndir(kod)).mesaj);
+          S.detaySekme = "dosyalar";
+          yonlendir();
+        } finally { d.disabled = false; d.textContent = "İhale dosyasını indir"; }
       } else if (ey === "duzenle") ihaleFormu(t);
       else if (ey === "klasor") await api("klasor", { method: "POST", govde: { yol: `İhaleler/${kod}` } });
       else if (ey === "sil") {
@@ -550,7 +762,7 @@ async function ajanda(kap) {
       <button class="dugme simge" data-ay="1" aria-label="Sonraki ay">›</button><button class="dugme kucuk" data-ay="0">Bugün</button>`}
       <span style="flex:1"></span>
       <div class="cipler"><button class="cip ${liste ? "" : "secili"}" data-gorunum="ay">Ay</button><button class="cip ${liste ? "secili" : ""}" data-gorunum="liste">Liste</button></div>
-      <a class="dugme" href="/takvim.ics" download title="Outlook, Google Takvim ya da telefon takvimine aktarın">Takvime aktar (.ics)</a>
+
       <button class="dugme ana-d" data-eylem="etkinlik">Tarih ekle</button></div>${govde}`;
 
   kap.onclick = async (ev) => {
@@ -712,43 +924,20 @@ async function ogrenme(kap) {
 
 async function ayarlar(kap) {
   baslik("Ayarlar");
-  const [s, o] = await Promise.all([api("siteler"), api("ozet")]);
-  const izin = "Notification" in window ? Notification.permission : "yok";
-  const kurulu = matchMedia("(display-mode: standalone)").matches;
-  kap.innerHTML = `<div class="izgara k2">
-    <div class="kart"><h2>İhale sitesi girişi</h2>
+  const s = await api("siteler");
+  kap.innerHTML = `<div class="kart" style="max-width:720px"><h2>İhale takip sitesi</h2>
       ${s.siteler.length ? `<div class="liste">${s.siteler.map((x) => `<div class="satir"><div class="govde"><b>${e(x.ad)}</b><small>${e(x.kullanici)} · ${x.sifre_kasada ? "şifre bilgisayarın kasasında" : "şifre kaydedilmedi"}</small></div></div>`).join("")}</div>`
         : `<p class="not">${s.durum === "atlandi" ? "Site girişi atlandı." : "Henüz site eklenmedi."} Girişsiz raporda şunlar yer almaz:</p><ul class="not">${s.eksik.map((x) => `<li>${e(x)}</li>`).join("")}</ul>`}
-      <div class="dugmeler"><button class="dugme ana-d" data-eylem="siteler">Site giriş panelini aç</button></div>
-      <p class="not">Şifreler yalnızca bilgisayarınızın şifre kasasında durur; bu panel şifreyi görmez ve saklamaz.</p></div>
-    <div class="kart"><h2>Uygulama</h2>
-      <p class="not">${kurulu ? "Panel uygulama olarak kurulu." : "Chrome ya da Edge adres çubuğundaki <b>Uygulamayı yükle</b> simgesiyle paneli masaüstü uygulaması gibi kurabilirsiniz. Telefonda kullanılmaz; panel yalnızca bu bilgisayarda çalışır."}</p>
-      <div class="dugmeler">${S.kurIstegi ? '<button class="dugme ana-d" data-eylem="kur">Uygulamayı yükle</button>' : ""}
-      <button class="dugme" data-eylem="bildirim" ${izin === "granted" || izin === "yok" ? "disabled" : ""}>${izin === "granted" ? "Hatırlatmalar açık" : izin === "yok" ? "Tarayıcı bildirimi desteklemiyor" : "Hatırlatmaları aç"}</button></div>
-      <p class="not">Hatırlatmalar, panel açıkken ihale gününden 7, 3 ve 1 gün önce (config.yaml <code>panel.hatirlatma_gun</code>) bildirim gösterir.
-      Bilgisayar açılınca panelin kendiliğinden başlaması için: <code>python panel.py baslangic --ac</code></p></div>
-    <div class="kart"><h2>Analizi otomatik başlatma</h2>
-      ${o.kuyruk_komutu ? `<p class="not">Analizi başlat dendiğinde şu komut çalışır:</p><div class="kopya"><span>${e(o.kuyruk_komutu)}</span></div>`
-        : `<p class="not">Şu an <b>Analizi başlat</b> ihaleyi kuyruğa alır; asistanınıza "kuyruktaki ihaleleri analiz et" yazdığınızda analiz başlar ve süreç panelde canlı görünür.</p>
-        <p class="not">Bilgisayarda Claude Code gibi komut satırından çalışan bir asistan varsa <code>.sistem/config.yaml</code> içinde örneğin şunu yazın:</p>
-        <div class="kopya"><span>analiz_komutu: "claude -p 'ihale-analiz: {kod} için analiz zincirini başlat'"</span></div>`}</div>
-    <div class="kart"><h2>Çalışma alanı</h2><dl class="bilgi"><dt>Klasör</dt><dd>${e(o.alan)}</dd><dt>Takvim</dt><dd><a href="/takvim.ics" download>ihale-ajandasi.ics</a> (Outlook, Google Takvim, telefon)</dd>
-      <dt>Tema</dt><dd><div class="cipler">${[["", "Sistem"], ["acik", "Açık"], ["koyu", "Koyu"]].map(([k, v]) => `<button class="cip ${(localStorageAl("tema") || "") === k ? "secili" : ""}" data-tema-sec="${k}">${v}</button>`).join("")}</div></dd></dl>
-      <div class="dugmeler" style="margin-top:12px"><button class="dugme" data-eylem="alan-ac">Klasörü aç</button></div></div></div>`;
+      <div class="dugmeler"><button class="dugme ana-d" data-eylem="siteler">${s.siteler.length ? "Site ekle ya da değiştir" : "İhale takip sitesi ekle"}</button></div>
+      <p class="not">Şifreler yalnızca bilgisayarınızın şifre kasasında durur; bu panel şifreyi görmez ve saklamaz.</p></div>`;
   kap.onclick = async (ev) => {
-    const tm = ev.target.closest("[data-tema-sec]");
-    if (tm) { temaUygula(tm.dataset.temaSec); return ayarlar(kap); }
-    const ey = ev.target.closest("[data-eylem]")?.dataset.eylem;
-    try {
-      if (ey === "siteler") bildir((await api("siteler", { method: "POST" })).mesaj);
-      if (ey === "bildirim") { await Notification.requestPermission(); ayarlar(kap); }
-      if (ey === "kur") kur();
-      if (ey === "alan-ac") await api("klasor", { method: "POST", govde: { yol: "." } });
-    } catch (h) { bildir(h.message, true); }
+    if (ev.target.closest('[data-eylem="siteler"]')) {
+      try { bildir((await api("siteler", { method: "POST" })).mesaj); } catch (h) { bildir(h.message, true); }
+    }
   };
 }
 
-// --- Tema, kurulum, hatırlatma --------------------------------------------------------
+// --- Tema, hatırlatma --------------------------------------------------------
 
 function localStorageAl(k) { try { return localStorage.getItem(k); } catch { return null; } }
 function localStorageYaz(k, v) { try { localStorage.setItem(k, v); } catch { /* gizli pencere */ } }
@@ -776,34 +965,45 @@ async function hatirlat(yaklasan) {
   localStorageYaz("bildirilen", JSON.stringify({ [gun]: kayitBugun }));
 }
 
-async function kur() {
-  if (!S.kurIstegi) return;
-  S.kurIstegi.prompt();
-  await S.kurIstegi.userChoice;
-  S.kurIstegi = null;
-  $("#kur-dugme").hidden = true;
-}
-
-window.addEventListener("beforeinstallprompt", (ev) => {
-  ev.preventDefault();
-  S.kurIstegi = ev;
-  $("#kur-dugme").hidden = false;
-});
+document.addEventListener("click", () => {
+  if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
+}, { once: true });
 
 document.addEventListener("click", (ev) => {
   const k = ev.target.closest("[data-kopya]");
   if (k) { navigator.clipboard?.writeText(k.dataset.kopya).then(() => bildir("Kopyalandı")); return; }
   const ey = ev.target.closest("[data-eylem]")?.dataset.eylem;
-  if (ey === "yeni-ihale" && !ev.target.closest("#icerik")) ihaleFormu();
-  else if (ey === "yeni-ihale" && ev.target.closest(".araclar")) ihaleFormu();
+  if (ey === "yeni-ihale") ihaleFormu();
   else if (ey === "tema") {
     const koyu = document.documentElement.dataset.tema === "koyu" ||
       (!document.documentElement.dataset.tema && matchMedia("(prefers-color-scheme: dark)").matches);
     temaUygula(koyu ? "acik" : "koyu");
   }
 });
-$("#kur-dugme").onclick = kur;
 $("#pencere").addEventListener("click", (ev) => { if (ev.target.id === "pencere") ev.target.close(); });
+
+// Tıklanan Windows bildirimi: sonuç ise sitedeki sonuç pencerede, değilse ilgili ihale açılır
+function sonucPenceresi(r) {
+  const pen = $("#pencere");
+  const satir = (ad, v) => v ? `<dt>${ad}</dt><dd>${v}</dd>` : "";
+  pen.innerHTML = `<form method="dialog" class="ilan-pencere"><h2>İhale sonucu</h2>
+    <dl class="bilgi">${satir("İhale kayıt no", e(r.ikn))}${satir("Kurum", e(r.idare))}${satir("İhale adı", `<b>${e(r.ad)}</b>`)}
+      ${satir("İhale tarihi", tarihYaz(r.ihale_tarihi))}${satir("Şehir", e(r.il))}${satir("Kazanan", `<b>${e(r.kazanan)}</b>`)}
+      ${satir("Sözleşme bedeli", e(r.sozlesme_bedeli))}${satir("Yaklaşık maliyet", r.yaklasik ? para(r.yaklasik) : "")}
+      ${satir("Tenzilat", r.tenzilat ? "%" + e(r.tenzilat) : "")}${satir("Sonuç ilanı", e(r.sonuc_tarihi))}</dl>
+    <div class="dugmeler"><a class="dugme" href="${e(r.kaynak_url)}" target="_blank" rel="noopener">Sitede aç</a>
+      <button class="dugme ana-d" value="kapat">Kapat</button></div></form>`;
+  pen.showModal();
+}
+
+async function bekleyeniGoster() {
+  const { hedef } = await api("site/bekleyen").catch(() => ({}));
+  if (!hedef) return;
+  if (hedef.tur === "sonuc") sonucPenceresi(hedef.ilan);
+  else if (hedef.tur === "ihale") { S.detaySekme = hedef.sekme || "genel"; location.hash = `#/ihale/${kodUrl(hedef.kod)}`; }
+}
+setInterval(() => { if (!document.hidden) bekleyeniGoster(); }, 2000);
+window.addEventListener("focus", bekleyeniGoster);
 
 temaUygula(localStorageAl("tema") || "");
 window.addEventListener("hashchange", yonlendir);

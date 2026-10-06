@@ -354,7 +354,8 @@ def ajanda(con, alan: Path, bas: date, son: date) -> list[dict]:
                                 "tamam": False, "kaynak": "otomatik", "durum": t["durum"]})
     for e in con.execute(
             """SELECT e.*, t.ad ihale_ad, t.durum FROM etkinlikler e LEFT JOIN takip t ON t.kod = e.kod
-               WHERE e.tarih BETWEEN ? AND ?""", (bas.isoformat(), son.isoformat())):
+               WHERE e.tarih BETWEEN ? AND ? AND (e.kod IS NULL OR t.kod IS NOT NULL)""",
+            (bas.isoformat(), son.isoformat())):  # takipten çıkan ihalenin kaydı ajandada kalmaz
         d = dict(e)
         d["tamam"] = bool(d["tamam"])
         olaylar.append(d)
