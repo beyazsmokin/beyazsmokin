@@ -106,6 +106,22 @@ def main() -> None:
 
     print(f"Çalışma alanı: {root}")
     print(f"Oluşturulan dosya: {created}")
+    dwg_kontrol()
+
+
+def dwg_kontrol() -> None:
+    """DWG çeviricisi yoksa nedenini ve diğer yolu anlatır, indirme sayfasını önerir."""
+    import dwg_cevirici
+    print()
+    print(dwg_cevirici.durum_metni())
+    if dwg_cevirici.bul() is None and sys.stdin.isatty():
+        try:
+            cevap = input("ODA File Converter indirme sayfası açılsın mı? (E/H): ").strip().lower()
+        except EOFError:
+            return
+        if cevap in ("e", "evet", "y"):
+            import webbrowser
+            webbrowser.open(dwg_cevirici.ODA_URL)
 
 
 if __name__ == "__main__":

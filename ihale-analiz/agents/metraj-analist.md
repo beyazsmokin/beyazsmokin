@@ -17,7 +17,7 @@ neyin görsel inceleme gerektirdiğini raporlar.
 | Format | Nasıl okunur |
 |--------|--------------|
 | DXF | Betik katmanları, uzunlukları, kapalı alanları, blok (kapı, pencere vb.) sayılarını ve yazıları çıkarır. Birim `$INSUNITS` ile kontrol edilir. |
-| DWG | Önce DXF'e çevrilir (`dwg2dxf` veya ODA File Converter). Çevirici yoksa kullanıcıdan DXF ya da PDF çıktısı istenir. |
+| DWG | Önce DXF'e çevrilir (ODA File Converter ya da `dwg2dxf`; `scripts/dwg_cevirici.py` bulur). Çevirici yoksa kullanıcıya betiğin açıklamasını ilet: neden gerekli, kurarsa ne olur, kurmazsa her DWG için DXF ya da PDF çıktısı vermesi gerekir. |
 | PDF | Vektör PDF'te yazılar ve tablolar betikle çıkar; ölçüler ve ölçek çizimden okunur. Taranmış PDF görsel gibi incelenir. |
 | JPG, PNG, GIF, TIF | Görsel olarak incelenir (model görüntü okuyabiliyorsa). Ölçü yazıları ve ölçek çubuğu esas alınır; ölçek yoksa bunu belirt. Çok sayfalı TIF her sayfa ayrı incelenir. |
 

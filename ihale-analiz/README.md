@@ -21,6 +21,7 @@ ihale-analiz/
     ├── init_workspace.py     # masaüstü klasörünü ve simgeyi kurar
     ├── yeni_ihale.py         # Gelen Dosyalar'ı ihale klasörüne taşır
     ├── proje_oku.py          # DWG/DXF/PDF/görsel proje okuma
+    ├── dwg_cevirici.py       # DWG çeviricisini bulur, yoksa kullanıcıya açıklar
     ├── metraj_kiyas.py       # idare ve hesap metrajı kıyası
     ├── excel_rapor.py        # Excel raporunu şablona doldurur
     ├── sablon_olustur.py     # BFTC ve anahtar teslim şablonlarını üretir
@@ -38,7 +39,9 @@ ihale-analiz/
 
 Gerekli: `pip install openpyxl` (Excel). Metraj için isteğe bağlı:
 `pip install ezdxf pdfplumber pillow`.
-DWG okumak için LibreDWG (`dwg2dxf`) veya ODA File Converter gerekir.
+DWG okumak için ücretsiz ODA File Converter ya da LibreDWG (`dwg2dxf`)
+gerekir; kurulum betiği yoksa nedenini anlatır ve indirme sayfasını önerir
+(`python scripts/dwg_cevirici.py` ile her zaman kontrol edilebilir).
 
 İlk kullanımda skill masaüstünde özel simgeli **İhale Analiz** klasörünü
 kurar, sistem dosyalarını gizli `.sistem` klasörüne koyar ve firma profilini

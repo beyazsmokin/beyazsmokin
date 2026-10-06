@@ -5,15 +5,16 @@ Kullanım: python3 proje_oku.py <dosya-veya-klasor> [...]
 
 İsteğe bağlı kütüphaneler: ezdxf (DXF), pdfplumber (PDF), Pillow (görseller).
 Eksik olan kütüphanenin formatı "görsel inceleme gerekli" olarak raporlanır.
-DWG için sistemde dwg2dxf (LibreDWG) veya ODAFileConverter aranır.
+DWG için ODA File Converter ya da dwg2dxf (LibreDWG) aranır (dwg_cevirici.py).
 """
 import math
-import shutil
 import subprocess
 import sys
 import tempfile
 from collections import defaultdict
 from pathlib import Path
+
+import dwg_cevirici
 
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".tif", ".tiff", ".bmp"}
 INSUNITS = {0: "birimsiz", 1: "inç", 2: "feet", 4: "mm", 5: "cm", 6: "m"}
@@ -68,16 +69,17 @@ def dxf_report(path: Path) -> list[str]:
 
 def dwg_report(path: Path) -> list[str]:
     tmp = Path(tempfile.mkdtemp())
-    if shutil.which("dwg2dxf"):
-        dxf = tmp / (path.stem + ".dxf")
-        subprocess.run(["dwg2dxf", "-o", str(dxf), str(path)], capture_output=True)
-    elif shutil.which("ODAFileConverter"):
-        subprocess.run(["ODAFileConverter", str(path.parent), str(tmp), "ACAD2018", "DXF",
-                        "0", "1", path.name], capture_output=True)
-        dxf = tmp / (path.stem + ".dxf")
+    dxf = tmp / (path.stem + ".dxf")
+    cevirici = dwg_cevirici.bul()
+    if cevirici is None:
+        return ["- DWG çevirici yok. Kullanıcıya `scripts/dwg_cevirici.py` açıklamasını ilet "
+                "(neden gerektiği, kurmazsa DXF ya da PDF çıktısı vermesi)."]
+    tur, exe = cevirici
+    if tur == "dwg2dxf":
+        subprocess.run([exe, "-o", str(dxf), str(path)], capture_output=True)
     else:
-        return ["- DWG çevirici yok (dwg2dxf veya ODAFileConverter). "
-                "Kullanıcıdan DXF ya da PDF çıktısı iste."]
+        subprocess.run([exe, str(path.parent), str(tmp), "ACAD2018", "DXF", "0", "1", path.name],
+                       capture_output=True)
     if not dxf.exists():
         return ["- DWG çevrilemedi. Kullanıcıdan DXF ya da PDF çıktısı iste."]
     return ["- DWG, DXF'e çevrildi."] + dxf_report(dxf)
