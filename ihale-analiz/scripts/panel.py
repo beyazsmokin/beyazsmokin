@@ -14,8 +14,9 @@ Adres sabittir (varsayılan http://127.0.0.1:8765, `config.yaml` > panel.port) k
 paneli uygulama olarak kurabilsin (Chrome/Edge adres çubuğunda "Uygulamayı yükle").
 
 Panelden:
-  - ihale eklenir, dosyası yüklenir, "Analizi başlat" ile kuyruğa alınır (`takip.py kuyruk`);
-    `config.yaml` > panel.analiz_komutu tanımlıysa analiz o komutla hemen başlatılır,
+  - ihale eklenir, dosyası yüklenir; takibe alınan ihalenin ön incelemesi, "Analizi başlat" ile
+    detaylı analizi analiz motoruyla (`motor.py`) hemen çalışır: ajanlar yapay zekâyla (`yz.py`),
+    hesaplar betiklerle; `config.yaml` > panel.analiz_komutu tanımlıysa motor yerine o komut çalışır,
   - ihale günleri, yer görme, açıklama talebi gibi tarihler ajandada izlenir,
   - analiz süreci adım adım canlı izlenir (`calisma/durum.json`),
   - HTML rapor panelde açılır, PDF ve Excel indirilir,
@@ -182,16 +183,49 @@ def guvenli_yol(kok: Path, goreli: str) -> Path:
     return yol
 
 
-def analiz_baslat(con, alan: Path, kod: str) -> dict:
+def analiz_baslat(con, alan: Path, kod: str, tur: str | None = None) -> dict:
+    """Analizi motorla (motor.py) ayrı süreçte başlatır.
+
+    Tür verilmezse: kaynak/ klasöründe ihale dosyası varsa detaylı analiz, yoksa ön inceleme.
+    config.yaml > panel.analiz_komutu doluysa motor yerine o komut çalışır."""
+    import motor
     t = con.execute("SELECT * FROM takip WHERE kod=?", (kod,)).fetchone()
     if not t:
         raise Hata(404, "İhale bulunamadı")
-    con.execute("UPDATE takip SET durum='hesaplanacak', guncelleme=? WHERE kod=?", (takip.simdi(), kod))
+    klasor = takip.ihale_klasoru(alan, kod)
+    if motor.calisiyor(klasor):
+        raise Hata(409, "Bu ihalenin analizi zaten sürüyor")
     komut = ayar(alan, "analiz_komutu")
     if not komut:
-        return {"komut": False, "mesaj": "İhale kuyruğa alındı. Yapay zeka asistanınıza "
-                                         "\"kuyruktaki ihaleleri analiz et\" yazın; süreç burada canlı görünür."}
-    klasor = takip.ihale_klasoru(alan, kod)
+        kaynak = klasor / "kaynak"
+        dolu = kaynak.is_dir() and any(f.is_file() and not f.name.startswith(".") for f in kaynak.rglob("*"))
+        tur = tur if tur in ("on", "detay") else "detay" if dolu else "on"
+        if tur == "detay" and not dolu:
+            raise Hata(409, "Detaylı analiz için önce ihale dosyasını indirin ya da Dosyalar sekmesinden yükleyin.")
+        surucu, yz_ad = motor.yz_sec(alan)
+        takip.surec_baslat(klasor, tur)  # panel adımları hemen doğru türle göstersin
+        con.execute("UPDATE takip SET durum='analizde', guncelleme=? WHERE kod=?", (takip.simdi(), kod))
+        argv = [sys.executable, str(SCRIPTS / "motor.py"), "--alan", str(alan), "calistir", "--kod", kod, "--tur", tur]
+        try:
+            with open(klasor / "calisma" / "motor.log", "ab") as f:
+                subprocess.Popen(argv, cwd=alan, stdout=f, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                                 **({"creationflags": 0x08000000} if sys.platform == "win32"
+                                    else {"start_new_session": True}))
+        except OSError as e:
+            takip.surec_bitir(klasor)
+            con.execute("UPDATE takip SET durum=?, guncelleme=? WHERE kod=?", (t["durum"], takip.simdi(), kod))
+            raise Hata(500, f"Analiz motoru başlatılamadı: {e}")
+        if tur == "on":
+            mesaj = ("Ön inceleme başladı: ilan bilgisi, idarenin geçmişi, rakip ve tenzilat, uygunluk puanı"
+                     + (f", değerlendirme ({yz_ad})." if surucu else ". Yapay zekâ bağlantısı yok; karar kural tabanlı.")
+                     + " Detaylı analiz için ihale dosyasını indirip yeniden başlatın.")
+        elif surucu:
+            mesaj = f"Detaylı analiz başladı; ajanlar {yz_ad} ile çalışıyor, adımlar Süreç sekmesinde canlı."
+        else:
+            mesaj = (f"Dokümanlar hazırlanıyor. Yapay zekâ bağlantısı yok ({yz_ad}); ajan adımları için "
+                     "asistanınıza \"Kuyruktaki ihaleleri analiz et\" yazın.")
+        return {"komut": True, "tur": tur, "yz": yz_ad if surucu else None, "mesaj": mesaj}
+    con.execute("UPDATE takip SET durum='hesaplanacak', guncelleme=? WHERE kod=?", (takip.simdi(), kod))
     argv = [p.replace("{kod}", kod).replace("{klasor}", str(klasor)).replace("{alan}", str(alan))
             for p in shlex.split(komut)]
     log = klasor / "calisma" / "analiz-komutu.log"
@@ -403,6 +437,10 @@ class Uygulama:
             return taramalar(alan)
         if len(yol) == 2 and y[:2] == ("GET", "taramalar"):
             return tarama(alan, unquote(yol[1]))
+        if y == ("GET", "motor"):
+            import motor
+            surucu, ad = motor.yz_sec(alan)
+            return {"yz": ad if surucu else None, "neden": None if surucu else ad}
         if y == ("GET", "siteler"):
             return siteler_durum(alan)
         if y == ("POST", "siteler"):
@@ -443,7 +481,7 @@ class Uygulama:
         if (yontem, *alt) == ("GET", "surec"):
             return {"surec": takip.surec(klasor), "durum": t["durum"]}
         if (yontem, *alt) == ("POST", "analiz"):
-            return analiz_baslat(con, alan, kod)
+            return analiz_baslat(con, alan, kod, (govde or {}).get("tur"))
         if (yontem, *alt) == ("POST", "rapor"):
             return rapor_uret(alan, kod)
         raise Hata(404, "Bulunamadı")

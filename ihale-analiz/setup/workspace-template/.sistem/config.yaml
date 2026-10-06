@@ -8,6 +8,13 @@ para_birimi: TRY
 analiz:
   paralel_ajanlar: true   # platform destekliyorsa 2a-2d paralel
   risk_esigi: orta        # dusuk | orta | yuksek: raporda gösterilecek en düşük risk
+  # Panelden başlatılan analizde ajanları çalıştıran yapay zekâ (scripts/yz.py):
+  # otomatik: Claude Code kuruluysa o, yoksa Claude API anahtarı, yoksa OpenAI uyumlu bağlantı
+  yz: otomatik            # otomatik | claude-kod | anthropic | openai | yok
+  yz_model: ""            # boşsa Claude için claude-opus-5-5; openai için şart (ör. gpt-5, hermes3)
+  yz_adres: ""            # OpenAI uyumlu sunucu; Hermes/Ollama: http://localhost:11434/v1
+  belge_karakter: 400000  # ajanlara verilen doküman metni sınırı (yerel modelde düşürün)
+  # API anahtarı buraya YAZILMAZ: `motor.py anahtar --saglayici anthropic|openai` (şifre kasası)
 
 tarama:                   # tarayıcı ajanının filtreleri (tara.py)
   iller: []               # ör. [Ankara, Konya]
@@ -21,6 +28,6 @@ metraj:
 panel:                    # İhale paneli (panel.py), yalnızca bu bilgisayarda çalışır
   port: 8765              # adres: http://127.0.0.1:8765
   hatirlatma_gun: [7, 3, 1]   # ihale gününden kaç gün önce hatırlatılsın
-  analiz_komutu: ""       # boşsa "Analizi başlat" ihaleyi kuyruğa alır; doluysa bu komut çalışır.
-                          # ör. "claude -p 'ihale-analiz: {kod} için analiz zincirini başlat'"
+  analiz_komutu: ""       # boşsa "Analizi başlat" analiz motorunu (motor.py) çalıştırır;
+                          # doluysa motor yerine bu komut çalışır.
                           # kullanılabilir yer tutucular: {kod} {klasor} {alan}

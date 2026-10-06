@@ -32,6 +32,9 @@ ihale-analiz/
     ├── pencere.py            # paneli kendi uygulama penceresinde açar
     ├── panel.py              # ihale paneli sunucusu (yalnızca 127.0.0.1), otomatik başlatma
     ├── takip.py              # takip edilen ihaleler, ajanda, analiz süreci (panel ve ajanların ortak verisi)
+    ├── motor.py              # analiz motoru: panelden ön inceleme ve detaylı analizi uçtan uca çalıştırır
+    ├── yz.py                 # ajanları çalıştıran yapay zekâ (Claude Code, Claude API, ChatGPT, Hermes)
+    ├── belge_metni.py        # ihale dokümanlarının (PDF, DOCX, XLSX, zip) yazısını çıkarır
     ├── html_rapor.py         # raporu HTML'e ve PDF'e çevirir
     ├── tara.py               # ihale listesini profile ve tercihlere göre skorlar
     ├── kisisel_hesap.py      # kişisel hesap kurallarını sistem tahmininin yanına koyar
@@ -95,10 +98,16 @@ tıklanınca panel açılır; sonuç bildiriminde sitedeki sonuç panelde pencer
 | Öğrenme | Kazanma oranı, tenzilat, rakipler, idareler, dersler, kişisel kurallar, tercih eğilimleri |
 | Ayarlar | İhale takip sitesi girişi (diğer ayarlar standart gelir) |
 
-"Analizi başlat" ihaleyi kuyruğa alır; asistana "kuyruktaki ihaleleri analiz et"
-denince işlenir. `config.yaml` > `panel.analiz_komutu` tanımlanırsa (ör. Claude
-Code: `claude -p 'ihale-analiz: {kod} için analiz zincirini başlat'`) analiz
-panelden hemen başlar. Güvenlik: panel yalnızca 127.0.0.1'i dinler, başka
+Panel analizi kendisi çalıştırır (`motor.py`): takibe alınan ihalenin **ön incelemesi**
+(ilan, idare geçmişi, rakip, tenzilat, uygunluk puanı, kısa karar) hemen yapılır; ihale
+dosyası indikten sonra "Analizi başlat" **detaylı analizi** çalıştırır: doküman okuma,
+idari, teknik, mali ve metraj ajanları (paralel), BFTC kıyası, pursantaj, kişisel hesap,
+risk, HTML/PDF rapor, Excel ve öğrenme kaydı. Her adım Süreç sekmesinde canlı görünür.
+Ajanları çalıştıran yapay zekâ `config.yaml` > `analiz.yz` ile seçilir: bilgisayarda
+Claude Code kuruluysa o kullanılır (anahtar gerekmez), yoksa Claude API
+(`motor.py anahtar --saglayici anthropic`), ChatGPT ya da Hermes/yerel model (OpenAI
+uyumlu `analiz.yz_adres`). Bağlantı yoksa ihale kuyruğa alınır ve asistana "kuyruktaki
+ihaleleri analiz et" denince işlenir. Güvenlik: panel yalnızca 127.0.0.1'i dinler, başka
 adresten gelen ve panelin kendisinden gelmeyen değiştirme isteklerini reddeder,
 dosya erişimi `İhaleler/` klasörüyle sınırlıdır, şifre görmez.
 

@@ -65,6 +65,16 @@ ADIMLAR = [
     ("4", "Rapor (Markdown, HTML, PDF, Excel)", "rapor-yazari", ["* Rapor.md"]),
     ("5", "Öğrenme kaydı", "koordinator", []),
 ]
+# Ön inceleme: ihale dosyası inmeden, takip sitesinin ilan bilgisi ve öğrenen veritabanıyla
+# yapılan hızlı değerlendirme (motor.py --tur on). Çıktı: "<kod> Ön İnceleme Rapor.md".
+ON_ADIMLAR = [
+    ("o1", "İlan bilgisi", "tarayici", []),
+    ("o2", "Geçmiş, rakip ve tenzilat", "koordinator", []),
+    ("o3", "Uygunluk puanı", "tarayici", []),
+    ("o4", "Ön değerlendirme", "koordinator", []),
+    ("o5", "Ön inceleme raporu", "rapor-yazari", ["* Ön İnceleme Rapor.md"]),
+]
+ON_EK = "Ön İnceleme Rapor"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS takip (
@@ -235,8 +245,12 @@ def esitle(con, alan: Path) -> None:
                    VALUES (?,?,?,?,?,?,?,?)""",
                 (d.name, i and i["konu"], i and i["idare"], i and i["tur"], i and i["yaklasik_maliyet"],
                  durum, simdi(), simdi()))
-        elif var[d.name] in ("takipte", "hesaplanacak", "analizde"):
-            yeni = "rapor_hazir" if s["rapor"] else "analizde" if s["basladi"] else var[d.name]
+        elif var[d.name] in ("takipte", "analizde") or (var[d.name] == "hesaplanacak" and s["calisiyor"]):
+            # kuyruktaki ihale ajan başlayana dek kuyrukta kalır (eski raporu olsa bile)
+            # bitmiş bir ön inceleme ihaleyi "analizde"ye çekmez
+            # yarıda kesilen motor analizi ihaleyi "analizde" bırakmaz, yeniden başlatılabilir
+            yeni = "analizde" if s["calisiyor"] else "rapor_hazir" if s["rapor"] else \
+                "takipte" if var[d.name] == "analizde" and s["motor"] else var[d.name]
             if yeni != var[d.name]:
                 con.execute("UPDATE takip SET durum=?, guncelleme=? WHERE kod=?", (yeni, simdi(), d.name))
 
@@ -254,14 +268,52 @@ def durum_dosyasi(klasor: Path) -> Path:
     return klasor / "calisma" / "durum.json"
 
 
+def motor_calisiyor(klasor: Path, kayit: dict) -> bool:
+    """Panelin başlattığı analiz (motor.py) sürüyor mu: başlangıç var, bitiş yok ve motorun kilidi
+    duruyor (süreç yeni başlatıldıysa kilit birkaç saniye sonra gelir)."""
+    if not kayit.get("baslangic") or kayit.get("bitis"):
+        return False
+    try:
+        gecen = datetime.now() - datetime.fromisoformat(kayit["baslangic"])
+    except ValueError:
+        return False
+    return gecen < timedelta(minutes=2) or ((klasor / "calisma" / ".motor.kilit").exists()
+                                            and gecen < timedelta(hours=3))
+
+
+def surec_bitir(klasor: Path) -> None:
+    p = durum_dosyasi(klasor)
+    try:
+        veri = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+    veri["bitis"] = simdi()
+    gecici = p.with_suffix(".tmp")
+    gecici.write_text(json.dumps(veri, ensure_ascii=False, indent=1), encoding="utf-8")
+    gecici.replace(p)
+
+
+def surec_baslat(klasor: Path, tur: str) -> None:
+    """Yeni analiz için durum.json'u sıfırlar; tur 'on' (ön inceleme) ya da 'detay'."""
+    p = durum_dosyasi(klasor)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    gecici = p.with_suffix(".tmp")
+    gecici.write_text(json.dumps({"tur": tur, "baslangic": simdi(), "adimlar": {}, "gunluk": []},
+                                 ensure_ascii=False, indent=1), encoding="utf-8")
+    gecici.replace(p)
+
+
 def adim_yaz(klasor: Path, adim: str, durum: str, mesaj: str | None = None) -> None:
-    if adim not in {a[0] for a in ADIMLAR}:
+    if adim not in {a[0] for a in ADIMLAR + ON_ADIMLAR}:
         raise ValueError(f"Geçersiz adım: {adim}")
     if durum not in ("basladi", "bitti", "hata"):
         raise ValueError("--durum basladi, bitti ya da hata olmalı")
     p = durum_dosyasi(klasor)
     p.parent.mkdir(parents=True, exist_ok=True)
     veri = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {"adimlar": {}, "gunluk": []}
+    tur = "on" if adim in {a[0] for a in ON_ADIMLAR} else "detay"
+    if (veri.get("tur") or "detay") != tur:  # ön incelemeden sonra başlayan analiz yeni süreçtir
+        veri = {"tur": tur, "adimlar": {}, "gunluk": []}
     veri["adimlar"][adim] = {"durum": durum, "zaman": simdi(), "mesaj": mesaj}
     veri["gunluk"].append({"zaman": simdi(), "adim": adim, "durum": durum, "mesaj": mesaj})
     veri["gunluk"] = veri["gunluk"][-200:]
@@ -271,7 +323,10 @@ def adim_yaz(klasor: Path, adim: str, durum: str, mesaj: str | None = None) -> N
 
 
 def _var(klasor: Path, desen: str) -> Path | None:
-    return next(iter(sorted(klasor.glob(desen))), None)
+    bulunan = sorted(klasor.glob(desen))
+    if desen == "* Rapor.md":  # ön inceleme raporu ana rapor sayılmaz
+        bulunan = [f for f in bulunan if not f.stem.endswith(ON_EK)]
+    return next(iter(bulunan), None)
 
 
 def surec(klasor: Path) -> dict:
@@ -282,7 +337,8 @@ def surec(klasor: Path) -> dict:
     except (json.JSONDecodeError, OSError):
         kayit = {}
     adimlar = []
-    for kimlik, ad, ajan, dosyalar in ADIMLAR:
+    tur = kayit.get("tur") or "detay"
+    for kimlik, ad, ajan, dosyalar in (ON_ADIMLAR if tur == "on" else ADIMLAR):
         k = kayit.get("adimlar", {}).get(kimlik)
         cikti = [f for f in (_var(klasor, d) for d in dosyalar) if f]
         if k:
@@ -301,6 +357,9 @@ def surec(klasor: Path) -> dict:
         "adimlar": adimlar,
         "yuzde": round(100 * biten / len(adimlar)),
         "basladi": any(a["durum"] != "bekliyor" for a in adimlar),
+        "calisiyor": any(a["durum"] == "calisiyor" for a in adimlar) or motor_calisiyor(klasor, kayit),
+        "motor": bool(kayit.get("baslangic")),
+        "tur": tur,
         "rapor": bool(_var(klasor, "* Rapor.md")),
         "gunluk": kayit.get("gunluk", [])[-50:],
     }
@@ -423,7 +482,7 @@ def main() -> None:
     s.add_argument("--durum", required=True, choices=list(DURUMLAR))
     s = sub.add_parser("adim")
     s.add_argument("--kod", required=True)
-    s.add_argument("--adim", required=True, choices=[a[0] for a in ADIMLAR])
+    s.add_argument("--adim", required=True, choices=[a[0] for a in ADIMLAR + ON_ADIMLAR])
     s.add_argument("--durum", required=True, choices=["basladi", "bitti", "hata"])
     s.add_argument("--mesaj")
     s = sub.add_parser("etkinlik-ekle")
