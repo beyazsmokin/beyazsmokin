@@ -1,0 +1,10 @@
+# ihale-analiz çalışma alanı ayarları
+surum: 0.1.0
+kurulum_tarihi: ""        # YYYY-AA-GG
+platform: ""              # claude | chatgpt | hermes | diger
+dil: tr
+para_birimi: TRY
+
+analiz:
+  paralel_ajanlar: true   # platform destekliyorsa 2a/2b/2c paralel
+  risk_esigi: orta        # dusuk | orta | yuksek: raporda gösterilecek en düşük risk
