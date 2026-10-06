@@ -39,20 +39,50 @@ Her metraj kalemine dayanağını yaz: dosya adı, pafta, katman veya ölçü.
    listele. Cetvelde eksik kalan miktarlar iş artışı ve süre riski,
    fazla kalanlar yaklaşık maliyet ve sınır değer sapması demektir;
    ikisini ayrı başlıkta göster.
+5. Teklif birim fiyatlarının kaynağını `fiyat-kaynaklari.csv`, kullanıcıya
+   sorulacakları `acik-sorular.csv` dosyasına yaz (biçimleri aşağıda, 2 ve 5).
 
-**Anahtar teslim / götürü bedel ihale** (cetvel yok):
-1. Mahal listesini çıkar ya da idarenin mahal listesini kullan ve
-   `mahal-listesi.csv` olarak kaydet. Sütunlar: `kat, mahal_no, mahal_adi,
-   alan, cevre, yukseklik, kapi, pencere, doseme, duvar, tavan, not`.
-2. Mahal bazında keşif çıkar (döşeme, duvar, tavan, doğrama, ıslak hacim
-   kalemleri) ve `kesif.csv` olarak kaydet. Sütunlar: `is_grubu, poz_no,
-   tanim, birim, miktar, birim_fiyat, mahal, not`. `is_grubu` pursantaj
-   tablosundaki iş grubu adıyla birebir aynı yazılır.
-3. İdarenin pursantaj tablosunu `pursantaj.csv` (`is_grubu, oran`; oran
-   yüzde puanı, ör. 55) olarak kaydet. Keşif kalemlerini bu iş gruplarına eşle; her iş
-   grubunun keşif tutarını ve pursantaj oranıyla uyumunu göster. Oranı
-   belirgin şekilde düşük ya da yüksek kalan grupları nakit akışı riski
-   olarak işaretle.
+**Anahtar teslim / götürü bedel ihale** (cetvel yok). Excel'deki
+"Metraj Mahal Listesi" oda listesi değil, poz bazlı metrajdır; BFTC
+miktarları ve pursantaj payları ondan hesaplanır. Dosyalar `calisma/` altına:
+
+1. `metraj.csv`: `is_grubu, alt_baslik, poz_no, tanim, birim, miktar,
+   kaynak, hesap, durum`. Her satır bir pozun bir alt başlıktaki miktarıdır.
+   `kaynak` çizim dosyası, katman ya da etiket; `hesap` ölçü kuralı ve
+   ara hesap (ör. `kazı = B × H × L`). `durum` şu sözcüklerle yazılır:
+   `HESAPLANDI`, `DOĞRULANDI`, `KULLANICI KARARI (tarih): ...`,
+   `... BEKLİYOR` (birim fiyat / katman teyidi / kural / karar bekleyen
+   satır, eksik sayılır), `KAPSAM DIŞI: ...` ya da `DAHİL DEĞİL: ...`
+   (başta yazılırsa tutara ve BFTC miktarına girmez). Bilgi ve not
+   satırlarında `poz_no` `— (bilgi)` gibi `—` ile başlar.
+2. `bftc.csv`: `poz_no, tanim, birim, birim_fiyat, not`. Miktar yazılmaz,
+   Excel metrajdan toplar. Her fiyatın kaynağını `fiyat-kaynaklari.csv`
+   dosyasına yaz: `poz_no, tanim, birim, birim_fiyat, kaynak, dayanak,
+   donem, not` (liste adı, sayfa, ait olduğu ay/yıl).
+3. `pursantaj.csv`: idarenin pursantaj belgesindeki gruplar, hiyerarşiyle:
+   `is_grubu, ust_grup, oran, kaynak, not`. `oran` üst gruba göre yüzde
+   sayısıdır (3,2164 = %3,2164); en üst grubun `ust_grup`u `—`.
+4. `grup-esleme.csv`: `bizim_grup, kurum_grubu, not`. Metrajdaki her iş
+   grubu ya da alt başlığın hangi kurum grubuna sayılacağı; karşılığı yoksa
+   `kurum_grubu` boş kalır ve `not`a nedeni yazılır. Excel her kurum grubu
+   için bizim payı kurum oranıyla karşılaştırır: fark Özet'teki eşiklere göre
+   ✔ uyumlu, ⚠ dikkat ya da ✗ ciddi fark olur (varsayılan 1 ve 2,5 puan).
+   Ciddi farkın nedenini birim fiyat, miktar ve gruplama diye ayırarak raporla.
+5. Kararı kullanıcıya bırakılan her konu `acik-sorular.csv` dosyasına:
+   `satir, soru, etki, durum, cevap` (`etki` TL, `durum` Açık / Karar
+   bekliyor / Cevaplandı).
+6. Sahada mevcut olup yeni imalata girmeyenler `mevcut-mahal.csv`:
+   `grup, imalat, birim, miktar, olcum_kaynagi, hesap, durum` (durum'a
+   kapsam dışı bırakmanın şartname dayanağı).
+7. İşe göre gerekirse:
+   - `donemsel-fiyat.csv`: `poz_no, tanim, birim, ocak … aralik,
+     yillik_liste, yillik_kitap, kullanilan_donem, not`
+     (`kullanilan_donem` ay adı, `Yıllık Liste` ya da `Yıllık Kitap`)
+   - `teknik-tarifler.csv`: `poz_no, tarif`
+   - `kazi-derinlik.csv` (boru hattı işleri): `pafta, baca_bas, baca_son,
+     zemin_akar_bas, zemin_akar_son, uzunluk, not`. Derinlik, iksa ve kazı
+     Excel'de Özet'teki kazı ek derinliği, hendek genişliği ve iksa eşiğiyle
+     hesaplanır.
 
 ## 3. Çıktı
 
@@ -64,7 +94,7 @@ Her metraj kalemine dayanağını yaz: dosya adı, pafta, katman veya ölçü.
 - İncelenen dosyalar ve okunabilme durumu:
 - Doğrulanamayan kalemler:
 
-## Kıyas (birim fiyatlı) veya Keşif ve pursantaj uyumu (götürü bedel)
+## Kıyas (birim fiyatlı) veya Metraj ve pursantaj uyumu (götürü bedel)
 | Poz / İş grubu | Tanım | Birim | İdare | Hesap | Fark % | Not |
 ```
 
@@ -73,8 +103,9 @@ Her metraj kalemine dayanağını yaz: dosya adı, pafta, katman veya ölçü.
 Önce `vt.py fiyat <poz_no>` ile geçmiş birim fiyat aralığını, götürü bedelde
 `vt.py pursantaj-ort --tur <tür>` ile geçmiş pursantaj ortalamalarını al;
 bu ihaledeki değerler aralığın dışındaysa raporda işaretle. Analiz bitince
-çıkardığın CSV'leri koordinatöre ver ki `vt.py metraj-yukle` ve
-`vt.py pursantaj-yukle` ile kaydedilsin.
+çıkardığın CSV'leri koordinatöre ver ki `vt.py metraj-yukle` (`metraj.csv`
+ya da `metraj-hesap.csv`) ve `vt.py pursantaj-yukle` (`pursantaj.csv`) ile
+kaydedilsin.
 
 **Kurallar:** Ölçü uydurma. Okunamayan dosyayı atlamadan "okunamadı" diye
 listele. Kesin metraj için yetkili mühendis kontrolü gerektiğini belirt.

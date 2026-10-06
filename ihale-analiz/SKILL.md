@@ -111,10 +111,14 @@ Rapor [templates/analiz-raporu.md](templates/analiz-raporu.md) şablonunu,
 Excel `scripts/excel_rapor.py` betiğiyle teklif türüne göre şablona yazılır:
 
 - **Birim fiyatlı (BFTC)** ihale: `birim-fiyat.xlsx` (Özet, BFTC Kıyas,
-  Yeterlilik, Teknik, Mali, Riskler, Kişisel Hesap, Yapılacaklar)
-- **Anahtar teslim / götürü bedel** ihale: `anahtar-teslim.xlsx` (Özet, Mahal
-  Listesi, Keşif, Pursantaj, Yeterlilik, Teknik, Mali, Riskler, Kişisel Hesap,
-  Yapılacaklar)
+  Fiyat Kaynakları, Açık Sorular, Yeterlilik, Teknik, Mali, Riskler, Kişisel
+  Hesap, Yapılacaklar)
+- **Anahtar teslim / götürü bedel** ihale: `anahtar-teslim.xlsx` (Özet, BFTC,
+  Dönemsel BFTC, Teknik Tarifler, Fiyat Kaynakları, Metraj Mahal Listesi,
+  Mevcut Mahal Listesi, Pursantaj Keşif Analizi, Grup Eşleme, Açık Sorular,
+  Kazı Derinlik Analizi, Yeterlilik, Teknik, Mali, Riskler, Kişisel Hesap,
+  Yapılacaklar). BFTC miktarları ve pursantaj payları Metraj Mahal
+  Listesi'nden formülle gelir.
 
 **Şablona sadık kal.** Excel çıktısı her zaman bu iki şablondan biridir.
 Sayfa, sütun, formül ya da biçim ekleme, silme, değiştirme; ajan çıktıları

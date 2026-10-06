@@ -110,9 +110,13 @@ def renk(ws, aralik, kurallar):
             aralik, FormulaRule(formula=[f'ISNUMBER(SEARCH("{metin}",{aralik.split(":")[0]}))'], fill=dolgu))
 
 
-TOLERANSLAR = {  # Özet'teki ad -> (tanımlı ad, varsayılan)
-    "Metraj Toleransı": ("MetrajTol", 0.05),
-    "Pursantaj Toleransı (puan)": ("PursantajTol", 0.02),
+TOLERANSLAR = {  # Özet'teki ad -> (tanımlı ad, varsayılan, biçim)
+    "Metraj Toleransı": ("MetrajTol", 0.05, YUZDE),
+    "Pursantaj ✔ eşiği (puan)": ("PursUyum", 1, "0.00"),
+    "Pursantaj ✗ eşiği (puan)": ("PursCiddi", 2.5, "0.00"),
+    "Kazı ek derinliği (m)": ("KaziEk", 0.10, "0.00"),
+    "Hendek genişliği (m)": ("HendekB", 1.00, "0.00"),
+    "İksa derinlik eşiği (m)": ("IksaH", 1.50, "0.00"),
 }
 
 
@@ -130,7 +134,7 @@ def ozet(wb, tur, sonuc_satirlari, toleranslar):
         ("Teklif Türü", None), ("İhale Tarihi ve Saati", None), ("Yaklaşık Maliyet", PARA),
         ("Geçici Teminat Oranı", YUZDE), ("Geçici Teminat Tutarı", PARA), ("İşin Süresi", None),
         ("İşin Yeri", None), ("Karar", None), ("Karar Gerekçesi", None),
-        *[(ad, YUZDE) for ad in toleranslar], ("Analiz Tarihi", "dd.mm.yyyy"),
+        *[(ad, TOLERANSLAR[ad][2]) for ad in toleranslar], ("Analiz Tarihi", "dd.mm.yyyy"),
     ]
     r = 4
     ws.cell(3, 1, "İHALE BİLGİLERİ").font = Font(bold=True, color=LACIVERT, size=11)
@@ -149,7 +153,7 @@ def ozet(wb, tur, sonuc_satirlari, toleranslar):
     ym, oran = satir["Yaklaşık Maliyet"], satir["Geçici Teminat Oranı"]
     ws.cell(satir["Geçici Teminat Tutarı"], 2, f'=IF(OR(B{ym}="",B{oran}=""),"",B{ym}*B{oran})').fill = HESAP
     for ad in toleranslar:
-        isim, varsayilan = TOLERANSLAR[ad]
+        isim, varsayilan, _ = TOLERANSLAR[ad]
         ws.cell(satir[ad], 2, varsayilan)
         wb.defined_names[isim] = DefinedName(isim, attr_text=f"'Özet'!$B${satir[ad]}")
     k = ws.cell(satir["Karar"], 2)
@@ -287,6 +291,55 @@ def harita(wb, satirlar, tur):
     ws.sheet_state = "hidden"
 
 
+def ek_sayfalar(wb):
+    """Fiyat Kaynakları ve Açık Sorular: iki şablonda da bulunur."""
+    ws = wb.create_sheet("Fiyat Kaynakları")
+    baslik(ws, "FİYAT KAYNAKLARI",
+           "Her birim fiyatın hangi listeden, hangi sayfadan ve hangi döneme ait olduğu. Kaynağı yazılmayan fiyat "
+           "rapora girmez.", 9)
+    tablo(ws, [("Sıra No", 7, None, None), ("Poz No", 16, None, None), ("İmalatın Cinsi", 44, None, None),
+               ("Birim", 8, None, None), ("Birim Fiyat", 14, PARA, None), ("Kaynak Listesi", 34, None, None),
+               ("Dayanak / Sayfa", 24, None, None), ("Dönem", 22, None, None), ("Not", 30, None, None)])
+
+    ws = wb.create_sheet("Açık Sorular")
+    baslik(ws, "AÇIK SORULAR / KARARLAR",
+           "Hiçbir kalem eksik kalmasın: kullanıcıya ya da idareye sorulacaklar, tutara etkisi ve verilen cevap.", 6)
+    tablo(ws, [("No", 6, None, None), ("Satır / Poz", 26, None, None), ("Soru", 56, None, None),
+               ("Etki (TL)", 16, PARA, None), ("Durum", 18, None, None), ("Cevap / Not", 50, None, None)],
+          toplamlar=(4,))
+    dv = DataValidation(type="list", formula1='"Açık,Karar bekliyor,Cevaplandı"', allow_blank=True,
+                        showErrorMessage=False)
+    ws.add_data_validation(dv)
+    dv.add(f"E{BAS}:E{SON}")
+    renk(ws, f"E{BAS}:E{SON}", [("CEVAPLAND", YESIL), ("BEKL", SARI), ("AÇ", TURUNCU)])
+
+
+EK_HARITA = [
+    ("Fiyat Kaynakları", "csv:fiyat-kaynaklari.csv", "Sıra No", "#sira"),
+    ("Fiyat Kaynakları", "csv:fiyat-kaynaklari.csv", "Poz No", "poz_no"),
+    ("Fiyat Kaynakları", "csv:fiyat-kaynaklari.csv", "İmalatın Cinsi", "tanim"),
+    ("Fiyat Kaynakları", "csv:fiyat-kaynaklari.csv", "Birim", "birim"),
+    ("Fiyat Kaynakları", "csv:fiyat-kaynaklari.csv", "Birim Fiyat", "birim_fiyat"),
+    ("Fiyat Kaynakları", "csv:fiyat-kaynaklari.csv", "Kaynak Listesi", "kaynak"),
+    ("Fiyat Kaynakları", "csv:fiyat-kaynaklari.csv", "Dayanak / Sayfa", "dayanak"),
+    ("Fiyat Kaynakları", "csv:fiyat-kaynaklari.csv", "Dönem", "donem"),
+    ("Fiyat Kaynakları", "csv:fiyat-kaynaklari.csv", "Not", "not"),
+    ("Açık Sorular", "csv:acik-sorular.csv", "No", "#sira"),
+    ("Açık Sorular", "csv:acik-sorular.csv", "Satır / Poz", "satir"),
+    ("Açık Sorular", "csv:acik-sorular.csv", "Soru", "soru"),
+    ("Açık Sorular", "csv:acik-sorular.csv", "Etki (TL)", "etki"),
+    ("Açık Sorular", "csv:acik-sorular.csv", "Durum", "durum"),
+    ("Açık Sorular", "csv:acik-sorular.csv", "Cevap / Not", "cevap"),
+]
+
+ACIK_SORU = ("Açık soru (cevaplanmamış)",
+             f"=COUNTA('Açık Sorular'!C{BAS}:C{SON})-COUNTIF('Açık Sorular'!E{BAS}:E{SON},\"CEVAPLAND*\")", "0")
+
+SIFIRSIZ = '#,##0.00;-#,##0.00;;@'   # 0 değerini boş gösterir
+AYLAR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım",
+         "Aralık"]
+
+
 def birim_fiyat(cikti: Path):
     wb = Workbook()
     K = "'BFTC Kıyas'"
@@ -301,6 +354,7 @@ def birim_fiyat(cikti: Path):
         ("Cetvelde olmayan iş", f'=COUNTIF({K}!L{BAS}:L{SON},"Cetvelde yok")', "0"),
         ("Yüksek risk", f'=COUNTIF(Riskler!D{BAS}:D{SON},"Yüksek")', "0"),
         ("Eksik yeterlilik", f'=COUNTIF(Yeterlilik!D{BAS}:D{SON},"Eksik")', "0"),
+        ACIK_SORU,
         ("Sistem tahmini (kişisel hesap)", "='Kişisel Hesap'!G3", PARA),
         ("Sizin yönteminizle", "='Kişisel Hesap'!H3", PARA),
     ], toleranslar=["Metraj Toleransı"])
@@ -334,8 +388,9 @@ def birim_fiyat(cikti: Path):
         f"I{BAS}:I{SON}",
         FormulaRule(formula=[f'AND(ISNUMBER(I{BAS}),ISNUMBER(M{BAS}),M{BAS}>0,ABS(I{BAS}/M{BAS}-1)>0.2)'], fill=SARI))
 
+    ek_sayfalar(wb)
     ortak_sayfalar(wb)
-    harita(wb, ORTAK_HARITA + [
+    harita(wb, ORTAK_HARITA + EK_HARITA + [
         ("BFTC Kıyas", "csv:metraj-kiyas.csv", "Sıra No", "#sira"),
         ("BFTC Kıyas", "csv:metraj-kiyas.csv", "Poz No", "poz_no"),
         ("BFTC Kıyas", "csv:metraj-kiyas.csv", "İş Kalemi Tanımı", "tanim"),
@@ -351,99 +406,238 @@ def birim_fiyat(cikti: Path):
 
 def anahtar_teslim(cikti: Path):
     wb = Workbook()
+    M = "'Metraj Mahal Listesi'"
+    P = "'Pursantaj Keşif Analizi'"
+    ML = lambda c: f"{M}!${c}${BAS}:${c}${SON}"   # noqa: E731
     ozet(wb, "ANAHTAR TESLİM / GÖTÜRÜ BEDEL", [
-        ("Keşif toplamı", "='Keşif'!H3", PARA),
-        ("Keşif / yaklaşık maliyet", '=IF(OR(YaklasikMaliyet="",\'Keşif\'!H3=0),"",\'Keşif\'!H3/YaklasikMaliyet)', YUZDE),
-        ("Mahal sayısı", f"=COUNTA('Mahal Listesi'!C{BAS}:C{SON})", "0"),
-        ("Toplam taban alanı (m²)", "='Mahal Listesi'!D3", '#,##0.00'),
-        ("Pursantaj toplamı", "=Pursantaj!B3", YUZDE),
-        ("Finansman yükü olan iş grubu", f'=COUNTIF(Pursantaj!F{BAS}:F{SON},"Finansman yükü*")', "0"),
+        ("Metraj toplamı", f"={M}!K3", PARA),
+        ("Metraj / yaklaşık maliyet", f'=IF(OR(YaklasikMaliyet="",{M}!K3=0),"",{M}!K3/YaklasikMaliyet)', YUZDE),
+        ("BFTC toplamı", "=BFTC!G3", PARA),
+        ("Poz sayısı", f"=COUNTA(BFTC!B{BAS}:B{SON})", "0"),
+        ("Metraj satırı", f"=COUNTA({ML('C')})", "0"),
+        ("Miktarı girilmemiş satır", f'=SUMPRODUCT(({ML("C")}<>"")*(LEFT({ML("C")},1)<>"—")*({ML("F")}=""))', "0"),
+        ("Fiyatı olmayan satır", f'=SUMPRODUCT(({ML("F")}<>"")*(LEFT({ML("C")},1)<>"—")*({ML("J")}=0))', "0"),
+        ("BEKLİYOR işaretli satır", f'=COUNTIF({ML("I")},"*BEKLİYOR*")', "0"),
+        ("Pursantajla eşlenmemiş tutar", f"=IF({M}!K3=0,\"\",{M}!K3-{P}!E3)", PARA),
+        ("Pursantaj ✗ ciddi fark", f'=COUNTIF({P}!I{BAS}:I{SON},"✗*")', "0"),
+        ("Pursantaj ⚠ dikkat", f'=COUNTIF({P}!I{BAS}:I{SON},"⚠*")', "0"),
+        ACIK_SORU,
         ("Yüksek risk", f'=COUNTIF(Riskler!D{BAS}:D{SON},"Yüksek")', "0"),
         ("Eksik yeterlilik", f'=COUNTIF(Yeterlilik!D{BAS}:D{SON},"Eksik")', "0"),
         ("Sistem tahmini (kişisel hesap)", "='Kişisel Hesap'!G3", PARA),
         ("Sizin yönteminizle", "='Kişisel Hesap'!H3", PARA),
-    ], toleranslar=["Pursantaj Toleransı (puan)"])
+    ], toleranslar=["Pursantaj ✔ eşiği (puan)", "Pursantaj ✗ eşiği (puan)", "Kazı ek derinliği (m)",
+                    "Hendek genişliği (m)", "İksa derinlik eşiği (m)"])
 
-    ws = wb.create_sheet("Mahal Listesi")
-    baslik(ws, "MAHAL LİSTESİ",
-           "Projeden ya da idarenin mahal listesinden çıkarılan mahaller. Duvar alanı çevre × yükseklikten hesaplanır "
-           "(kapı ve pencere boşlukları düşülmemiştir).", 13)
-    tablo(ws, [
-        ("Kat", 8, None, None),
-        ("Mahal No", 10, None, None),
-        ("Mahal Adı", 26, None, None),
-        ("Taban Alanı (m²)", 12, '#,##0.00', None),
-        ("Çevre (m)", 10, '#,##0.00', None),
-        ("Yükseklik (m)", 10, '#,##0.00', None),
-        ("Duvar Alanı (m²)", 12, '#,##0.00', '=IF(OR(E{r}="",F{r}=""),"",E{r}*F{r})'),
-        ("Kapı Adedi", 8, "0", None),
-        ("Pencere Adedi", 8, "0", None),
-        ("Döşeme Kaplaması", 20, None, None),
-        ("Duvar Kaplaması", 20, None, None),
-        ("Tavan Kaplaması", 20, None, None),
-        ("Not", 30, None, None),
-    ], toplamlar=(4, 7, 8, 9))
-
-    ws = wb.create_sheet("Keşif")
-    baslik(ws, "KEŞİF",
-           "Mahal listesinden çıkarılan keşif kalemleri. İş grubu, Pursantaj sayfasındaki iş grubu adıyla birebir aynı "
-           "yazılmalıdır; pursantaj uyumu buna göre hesaplanır.", 10)
+    ws = wb.create_sheet("BFTC")
+    baslik(ws, "BİRİM FİYAT TEKLİF CETVELİ (KENDİ HESABIMIZ)",
+           "Miktar elle girilmez: Metraj Mahal Listesi'ndeki aynı pozların toplamıdır (Durum'u KAPSAM DIŞI / DAHİL DEĞİL "
+           "ile başlayanlar hariç). "
+           "Birim fiyatın kaynağı Fiyat Kaynakları sayfasındadır.", 8)
     tablo(ws, [
         ("Sıra No", 7, None, None),
-        ("İş Grubu", 22, None, None),
-        ("Poz / Kalem No", 16, None, None),
-        ("Tanım", 44, None, None),
+        ("Poz No", 16, None, None),
+        ("İmalatın Cinsi", 50, None, None),
         ("Birim", 8, None, None),
-        ("Miktar", 13, MIKTAR, None),
+        ("Miktar", 14, MIKTAR,
+         f'=IF(B{{r}}="","",SUMIFS({ML("F")},{ML("C")},B{{r}},{ML("I")},"<>KAPSAM DIŞI*",'
+         f'{ML("I")},"<>DAHİL DEĞİL*"))'),
         ("Birim Fiyat", 14, PARA, None),
-        ("Tutar", 17, PARA, '=IF(OR(F{r}="",G{r}=""),"",F{r}*G{r})'),
-        ("Mahal", 18, None, None),
-        ("Not", 30, None, None),
-    ], toplamlar=(8,))
-
-    ws = wb.create_sheet("Pursantaj")
-    baslik(ws, "PURSANTAJ UYUMU",
-           "İdarenin pursantaj oranları ile keşifte her iş grubunun maliyet payı karşılaştırılır. Keşif payı pursantajdan "
-           "yüksekse iş grubu yapıldığında ödenen tutar maliyeti karşılamaz (finansman yükü).", 6)
-    tablo(ws, [
-        ("İş Grubu", 30, None, None),
-        ("Pursantaj Oranı", 13, YUZDE, None),
-        ("Keşif Tutarı", 17, PARA, f'=IF(A{{r}}="","",SUMIF(\'Keşif\'!$B${BAS}:$B${SON},A{{r}},\'Keşif\'!$H${BAS}:$H${SON}))'),
-        ("Keşif Payı", 11, YUZDE, '=IF(OR(A{r}="",\'Keşif\'!$H$3=0),"",C{r}/\'Keşif\'!$H$3)'),
-        ("Fark (puan)", 11, YUZDE, '=IF(OR(B{r}="",D{r}=""),"",D{r}-B{r})'),
-        ("Değerlendirme", 34, None,
-         '=IF(E{r}="","",IF(E{r}>PursantajTol,"Finansman yükü: maliyet ödemeden önde",'
-         'IF(E{r}<-PursantajTol,"Lehte: ödeme maliyetten önde","Uyumlu")))'),
-    ], toplamlar=(2, 3))
-    renk(ws, f"F{BAS}:F{SON}", [("Finansman", KIRMIZI), ("Lehte", YESIL), ("Uyumlu", YESIL)])
+        ("Tutar", 17, PARA, '=IF(OR(E{r}="",F{r}=""),"",E{r}*F{r})'),
+        ("Not", 34, None, None),
+    ], toplamlar=(7,))
     ws.conditional_formatting.add(
-        "B3", FormulaRule(formula=['AND(B3<>0,ABS(B3-1)>0.001)'], fill=KIRMIZI))
+        f"F{BAS}:F{SON}", FormulaRule(formula=[f'AND(B{BAS}<>"",F{BAS}="")'], fill=SARI))
+
+    ws = wb.create_sheet("Dönemsel BFTC")
+    son_ay = get_column_letter(5 + len(AYLAR) + 2)     # Yıllık Kitap sütunu
+    baslik(ws, "DÖNEMSEL BFTC",
+           "Aynı pozun aylık ve yıllık liste fiyatları. Kullanılan Dönem seçilir, tutar o dönemin fiyatıyla hesaplanır.",
+           5 + len(AYLAR) + 6)
+    sut = [("Sıra No", 7, None, None), ("Poz No", 16, None, None), ("İmalatın Cinsi", 40, None, None),
+           ("Birim", 8, None, None),
+           ("Miktar", 13, MIKTAR, '=IF(B{r}="","",SUMIF(BFTC!$B$5:$B$504,B{r},BFTC!$E$5:$E$504))')]
+    sut += [(ay, 11, PARA, None) for ay in AYLAR]
+    sut += [("Yıllık Liste", 12, PARA, None), ("Yıllık Kitap", 12, PARA, None),
+            ("Kullanılan Dönem", 13, None, None),
+            ("Birim Fiyat", 13, PARA,
+             f'=IF(OR(B{{r}}="",T{{r}}=""),"",IFERROR(1/(1/INDEX(F{{r}}:{son_ay}{{r}},'
+             f'MATCH(T{{r}},$F$4:${son_ay}$4,0))),""))'),
+            ("Tutar", 16, PARA, '=IF(OR(E{r}="",U{r}=""),"",E{r}*U{r})'),
+            ("Not / Dönem Kaynağı", 30, None, None)]
+    tablo(ws, sut, toplamlar=(22,))
+    dv = DataValidation(type="list", formula1=f"$F$4:${son_ay}$4", allow_blank=True)
+    ws.add_data_validation(dv)
+    dv.add(f"T{BAS}:T{SON}")
+
+    ws = wb.create_sheet("Teknik Tarifler")
+    baslik(ws, "TEKNİK TARİFLER", "BFTC'deki her pozun teknik tarifi ve ölçü kuralı (birim fiyat kitabından).", 3)
+    tablo(ws, [("Sıra No", 7, None, None), ("Poz No", 16, None, None), ("Teknik Tarifi", 120, None, None)])
+
+    ek_sayfalar(wb)       # Fiyat Kaynakları, Açık Sorular; aşağıdaki sayfalar Açık Sorular'ın önüne girer
+
+    ws = wb.create_sheet("Metraj Mahal Listesi", index=wb.sheetnames.index("Açık Sorular"))
+    baslik(ws, "METRAJ MAHAL LİSTESİ",
+           "Her satır bir pozun bir iş grubundaki miktarıdır; kaynağı (çizim, katman, etiket) ve hesap kuralı yazılır. "
+           "BFTC miktarları ve pursantaj payları buradan hesaplanır. Durum'da 'BEKLİYOR' geçen satırlar eksik sayılır; "
+           "Durum'u 'KAPSAM DIŞI' ya da 'DAHİL DEĞİL' ile başlayan satırlar tutara ve BFTC miktarına girmez. Poz No'su "
+           "'—' ile başlayan satırlar bilgi/not satırıdır, eksik sayılmaz.", 11)
+    tablo(ws, [
+        ("İş Grubu", 18, None, None),
+        ("Alt Başlık", 22, None, None),
+        ("Poz No", 15, None, None),
+        ("İmalatın Cinsi", 40, None, None),
+        ("Birim", 7, None, None),
+        ("Miktar", 13, MIKTAR, None),
+        ("Kaynak (çizim / katman / etiket)", 34, None, None),
+        ("Hesap (ölçü kuralı)", 34, None, None),
+        ("Durum", 24, None, None),
+        ("Birim Fiyat (BFTC'den)", 14, SIFIRSIZ,
+         '=IF(C{r}="",0,IFERROR(VLOOKUP(C{r},BFTC!$B$5:$F$504,5,FALSE),0))'),
+        ("Satır Tutarı", 16, SIFIRSIZ,
+         '=IF(OR(F{r}="",J{r}=0,LEFT(I{r},11)="KAPSAM DIŞI",LEFT(I{r},11)="DAHİL DEĞİL"),0,'
+         'F{r}*J{r})'),
+    ], toplamlar=(11,))
+    renk(ws, f"I{BAS}:I{SON}", [("BEKLİYOR", SARI), ("KAPSAM DIŞI", KIRMIZI), ("DAHİL DEĞİL", KIRMIZI),
+                                ("HESAPLANDI", YESIL), ("DOĞRULANDI", YESIL)])
+
+    ws = wb.create_sheet("Mevcut Mahal Listesi", index=wb.sheetnames.index("Açık Sorular"))
+    baslik(ws, "MEVCUT MAHAL LİSTESİ",
+           "Sahada mevcut olan ve yeni imalata dahil olmayan tesisler. Kapsam dışı bırakmanın şartname dayanağı "
+           "Durum sütununa yazılır.", 8)
+    tablo(ws, [("Sıra No", 7, None, None), ("Grup", 22, None, None), ("İmalat / Mevcut Tesis", 40, None, None),
+               ("Birim", 8, None, None), ("Miktar", 13, MIKTAR, None), ("Ölçüm Kaynağı", 28, None, None),
+               ("Hesap / Ölçüm Esası", 34, None, None), ("Durum", 30, None, None)])
+
+    ws = wb.create_sheet("Pursantaj Keşif Analizi", index=wb.sheetnames.index("Açık Sorular"))
+    baslik(ws, "PURSANTAJ KEŞİF ANALİZİ · ANAHTAR TESLİM SAĞLAMASI",
+           "Kurumun pursantaj oranları ile bizim metrajımızdaki grup payları karşılaştırılır. Oranlar yüzde sayısıdır "
+           "(3,2164 = %3,2164), Fark yüzde puanıdır. ✔ / ⚠ / ✗ eşikleri Özet sayfasından değiştirilir. Bizim grupların "
+           "hangi kurum grubuna sayılacağı Grup Eşleme sayfasında seçilir.", 11)
+    GE = "'Grup Eşleme'"
+    A, B, C = f"$A${BAS}:$A${SON}", f"$B${BAS}:$B${SON}", f"$C${BAS}:$C${SON}"
+    ust = lambda x: f"IFERROR(VLOOKUP({x},$A${BAS}:$B${SON},2,FALSE),\"\")"          # noqa: E731
+    kat = lambda x: f"IFERROR(VLOOKUP({x},$A${BAS}:$C${SON},3,FALSE)/100,1)"      # noqa: E731
+    p1 = "B{r}"
+    p2 = ust(p1)
+    p3 = ust(p2)
+    tablo(ws, [
+        ("İş Grubu (kurum)", 30, None, None),
+        ("Üst Grup", 24, None, None),
+        ("Oran (üst gruba göre, %)", 12, "0.0000", None),
+        ("Genel Oran (%)", 12, "0.0000",
+         '=IF(OR(A{r}="",C{r}=""),"",C{r}*' + kat(p1) + "*" + kat(p2) + "*" + kat(p3) + ")"),
+        ("Bizim Tutar (₺)", 17, PARA, f'=IF(A{{r}}="","",SUMIF({GE}!$B${BAS}:$B${SON},A{{r}},{GE}!$C${BAS}:$C${SON}))'),
+        ("Bizim Pay (%)", 11, "0.0000",
+         f'=IF(OR(A{{r}}="",{M}!$K$3=0,COUNTIF({B},A{{r}})>0),"",E{{r}}/{M}!$K$3*100)'),
+        ("Fark (puan)", 11, "+0.0000;-0.0000;0", '=IF(OR(D{r}="",F{r}=""),"",F{r}-D{r})'),
+        ("Fark (%)", 10, "+0.0;-0.0;0", '=IF(OR(G{r}="",D{r}=0),"",G{r}/D{r}*100)'),
+        ("Durum", 22, None,
+         f'=IF(A{{r}}="","",IF(COUNTIF({B},A{{r}})>0,IF(ABS(SUMIF({B},A{{r}},{C})-100)<0.0001,'
+         f'"✔ alt gruplar Σ=100","⚠ alt gruplar Σ≠100"),IF(G{{r}}="","—",IF(ABS(G{{r}})<=PursUyum,"✔ uyumlu",'
+         f'IF(ABS(G{{r}})<=PursCiddi,"⚠ dikkat","✗ ciddi fark")))))'),
+        ("Kaynak", 24, None, None),
+        ("Not", 34, None, None),
+    ])
+    # toplam yalnızca alt grubu olmayan (yaprak) gruplardan: üst gruplar çift sayılmasın
+    for j, bicim in ((5, PARA), (6, "0.0000")):
+        h = get_column_letter(j)
+        c = ws.cell(3, j, f'=SUMPRODUCT((COUNTIF({B},{A})=0)*({A}<>""),{h}{BAS}:{h}{SON})')
+        c.font = Font(bold=True)
+        c.number_format = bicim
+    renk(ws, f"I{BAS}:I{SON}", [("✗", KIRMIZI), ("⚠", SARI), ("✔", YESIL)])
+
+    ws = wb.create_sheet("Grup Eşleme", index=wb.sheetnames.index("Açık Sorular"))
+    baslik(ws, "GRUP EŞLEME · BİZİM GRUPLAR → KURUM GRUPLARI",
+           "Metrajdaki her iş grubu ya da alt başlığın pursantajda hangi kurum grubuna sayılacağı. Karşılığı yoksa "
+           "kurum grubu boş bırakılır. Gruplama senaryosu denemek için yalnızca Kurum Grubu değiştirilir.", 8)
+    eslesir = f'(({ML("A")}=A{{r}})+({ML("B")}=A{{r}})>0)'
+    tablo(ws, [
+        ("Bizim Grup (iş grubu / alt başlık)", 30, None, None),
+        ("Kurum Grubu", 26, None, None),
+        ("Bizim Tutar (₺)", 17, PARA, f'=IF(A{{r}}="","",SUMPRODUCT({eslesir}*{ML("K")}))'),
+        ("Pay (%)", 10, "0.0000", f'=IF(OR(A{{r}}="",{M}!$K$3=0),"",C{{r}}/{M}!$K$3*100)'),
+        ("Satır", 8, "0", f'=IF(A{{r}}="","",SUMPRODUCT({eslesir}*({ML("C")}<>"")))'),
+        ("Miktarı Girilmemiş", 10, "0", f'=IF(A{{r}}="","",SUMPRODUCT({eslesir}*({ML("C")}<>"")*(LEFT({ML("C")},1)<>"—")*({ML("F")}="")))'),
+        ("Fiyatı Olmayan", 10, "0", f'=IF(A{{r}}="","",SUMPRODUCT({eslesir}*({ML("F")}<>"")*(LEFT({ML("C")},1)<>"—")*({ML("J")}=0)))'),
+        ("Not", 40, None, None),
+    ])
+    dv = DataValidation(type="list", formula1=f"{P}!$A${BAS}:$A${SON}", allow_blank=True, showErrorMessage=False)
+    ws.add_data_validation(dv)
+    dv.add(f"B{BAS}:B{SON}")
+
+    ws = wb.create_sheet("Kazı Derinlik Analizi")
+    baslik(ws, "KAZI DERİNLİK ANALİZİ",
+           "Boykesitlerden koşu koşu kazı derinliği: H = (zemin kotu − akar kot) + kazı ek derinliği. İksa, H iksa "
+           "eşiğini geçen koşularda iki yüz için 2×H×L; kazı hendek genişliği × H × L. Parametreler Özet sayfasındadır.",
+           12)
+    tablo(ws, [
+        ("Pafta", 8, None, None),
+        ("Baca (baş)", 11, None, None),
+        ("Baca (son)", 11, None, None),
+        ("Zemin−Akar Baş (m)", 11, "0.00", None),
+        ("Zemin−Akar Son (m)", 11, "0.00", None),
+        ("H1 (m)", 9, "0.00", '=IF(D{r}="","",D{r}+KaziEk)'),
+        ("H2 (m)", 9, "0.00", '=IF(E{r}="","",E{r}+KaziEk)'),
+        ("H Ort. (m)", 9, "0.000", '=IF(OR(F{r}="",G{r}=""),"",(F{r}+G{r})/2)'),
+        ("Uzunluk (m)", 11, "#,##0.00", None),
+        ("İksa 2×H×L (m²)", 14, "#,##0.00", '=IF(OR(H{r}="",I{r}=""),"",IF(H{r}>=IksaH,2*H{r}*I{r},0))'),
+        ("Kazı B×H×L (m³)", 14, "#,##0.00", '=IF(OR(H{r}="",I{r}=""),"",HendekB*H{r}*I{r})'),
+        ("Not", 30, None, None),
+    ], toplamlar=(9, 10, 11))
 
     ortak_sayfalar(wb)
-    harita(wb, ORTAK_HARITA + [
-        ("Mahal Listesi", "csv:mahal-listesi.csv", "Kat", "kat"),
-        ("Mahal Listesi", "csv:mahal-listesi.csv", "Mahal No", "mahal_no"),
-        ("Mahal Listesi", "csv:mahal-listesi.csv", "Mahal Adı", "mahal_adi"),
-        ("Mahal Listesi", "csv:mahal-listesi.csv", "Taban Alanı (m²)", "alan"),
-        ("Mahal Listesi", "csv:mahal-listesi.csv", "Çevre (m)", "cevre"),
-        ("Mahal Listesi", "csv:mahal-listesi.csv", "Yükseklik (m)", "yukseklik"),
-        ("Mahal Listesi", "csv:mahal-listesi.csv", "Kapı Adedi", "kapi"),
-        ("Mahal Listesi", "csv:mahal-listesi.csv", "Pencere Adedi", "pencere"),
-        ("Mahal Listesi", "csv:mahal-listesi.csv", "Döşeme Kaplaması", "doseme"),
-        ("Mahal Listesi", "csv:mahal-listesi.csv", "Duvar Kaplaması", "duvar"),
-        ("Mahal Listesi", "csv:mahal-listesi.csv", "Tavan Kaplaması", "tavan"),
-        ("Mahal Listesi", "csv:mahal-listesi.csv", "Not", "not"),
-        ("Keşif", "csv:kesif.csv", "Sıra No", "#sira"),
-        ("Keşif", "csv:kesif.csv", "İş Grubu", "is_grubu"),
-        ("Keşif", "csv:kesif.csv", "Poz / Kalem No", "poz_no"),
-        ("Keşif", "csv:kesif.csv", "Tanım", "tanim"),
-        ("Keşif", "csv:kesif.csv", "Birim", "birim"),
-        ("Keşif", "csv:kesif.csv", "Miktar", "miktar"),
-        ("Keşif", "csv:kesif.csv", "Birim Fiyat", "birim_fiyat"),
-        ("Keşif", "csv:kesif.csv", "Mahal", "mahal"),
-        ("Keşif", "csv:kesif.csv", "Not", "not"),
-        ("Pursantaj", "csv:pursantaj.csv", "İş Grubu", "is_grubu"),
-        ("Pursantaj", "csv:pursantaj.csv", "Pursantaj Oranı", "oran%"),
+    harita(wb, ORTAK_HARITA + EK_HARITA + [
+        ("BFTC", "csv:bftc.csv", "Sıra No", "#sira"),
+        ("BFTC", "csv:bftc.csv", "Poz No", "poz_no"),
+        ("BFTC", "csv:bftc.csv", "İmalatın Cinsi", "tanim"),
+        ("BFTC", "csv:bftc.csv", "Birim", "birim"),
+        ("BFTC", "csv:bftc.csv", "Birim Fiyat", "birim_fiyat"),
+        ("BFTC", "csv:bftc.csv", "Not", "not"),
+        ("Dönemsel BFTC", "csv:donemsel-fiyat.csv", "Sıra No", "#sira"),
+        ("Dönemsel BFTC", "csv:donemsel-fiyat.csv", "Poz No", "poz_no"),
+        ("Dönemsel BFTC", "csv:donemsel-fiyat.csv", "İmalatın Cinsi", "tanim"),
+        ("Dönemsel BFTC", "csv:donemsel-fiyat.csv", "Birim", "birim"),
+        *[("Dönemsel BFTC", "csv:donemsel-fiyat.csv", ay, ay.lower()) for ay in AYLAR],
+        ("Dönemsel BFTC", "csv:donemsel-fiyat.csv", "Yıllık Liste", "yillik_liste"),
+        ("Dönemsel BFTC", "csv:donemsel-fiyat.csv", "Yıllık Kitap", "yillik_kitap"),
+        ("Dönemsel BFTC", "csv:donemsel-fiyat.csv", "Kullanılan Dönem", "kullanilan_donem"),
+        ("Dönemsel BFTC", "csv:donemsel-fiyat.csv", "Not / Dönem Kaynağı", "not"),
+        ("Teknik Tarifler", "csv:teknik-tarifler.csv", "Sıra No", "#sira"),
+        ("Teknik Tarifler", "csv:teknik-tarifler.csv", "Poz No", "poz_no"),
+        ("Teknik Tarifler", "csv:teknik-tarifler.csv", "Teknik Tarifi", "tarif"),
+        ("Metraj Mahal Listesi", "csv:metraj.csv", "İş Grubu", "is_grubu"),
+        ("Metraj Mahal Listesi", "csv:metraj.csv", "Alt Başlık", "alt_baslik"),
+        ("Metraj Mahal Listesi", "csv:metraj.csv", "Poz No", "poz_no"),
+        ("Metraj Mahal Listesi", "csv:metraj.csv", "İmalatın Cinsi", "tanim"),
+        ("Metraj Mahal Listesi", "csv:metraj.csv", "Birim", "birim"),
+        ("Metraj Mahal Listesi", "csv:metraj.csv", "Miktar", "miktar"),
+        ("Metraj Mahal Listesi", "csv:metraj.csv", "Kaynak (çizim / katman / etiket)", "kaynak"),
+        ("Metraj Mahal Listesi", "csv:metraj.csv", "Hesap (ölçü kuralı)", "hesap"),
+        ("Metraj Mahal Listesi", "csv:metraj.csv", "Durum", "durum"),
+        ("Mevcut Mahal Listesi", "csv:mevcut-mahal.csv", "Sıra No", "#sira"),
+        ("Mevcut Mahal Listesi", "csv:mevcut-mahal.csv", "Grup", "grup"),
+        ("Mevcut Mahal Listesi", "csv:mevcut-mahal.csv", "İmalat / Mevcut Tesis", "imalat"),
+        ("Mevcut Mahal Listesi", "csv:mevcut-mahal.csv", "Birim", "birim"),
+        ("Mevcut Mahal Listesi", "csv:mevcut-mahal.csv", "Miktar", "miktar"),
+        ("Mevcut Mahal Listesi", "csv:mevcut-mahal.csv", "Ölçüm Kaynağı", "olcum_kaynagi"),
+        ("Mevcut Mahal Listesi", "csv:mevcut-mahal.csv", "Hesap / Ölçüm Esası", "hesap"),
+        ("Mevcut Mahal Listesi", "csv:mevcut-mahal.csv", "Durum", "durum"),
+        ("Pursantaj Keşif Analizi", "csv:pursantaj.csv", "İş Grubu (kurum)", "is_grubu"),
+        ("Pursantaj Keşif Analizi", "csv:pursantaj.csv", "Üst Grup", "ust_grup"),
+        ("Pursantaj Keşif Analizi", "csv:pursantaj.csv", "Oran (üst gruba göre, %)", "oran"),
+        ("Pursantaj Keşif Analizi", "csv:pursantaj.csv", "Kaynak", "kaynak"),
+        ("Pursantaj Keşif Analizi", "csv:pursantaj.csv", "Not", "not"),
+        ("Grup Eşleme", "csv:grup-esleme.csv", "Bizim Grup (iş grubu / alt başlık)", "bizim_grup"),
+        ("Grup Eşleme", "csv:grup-esleme.csv", "Kurum Grubu", "kurum_grubu"),
+        ("Grup Eşleme", "csv:grup-esleme.csv", "Not", "not"),
+        ("Kazı Derinlik Analizi", "csv:kazi-derinlik.csv", "Pafta", "pafta"),
+        ("Kazı Derinlik Analizi", "csv:kazi-derinlik.csv", "Baca (baş)", "baca_bas"),
+        ("Kazı Derinlik Analizi", "csv:kazi-derinlik.csv", "Baca (son)", "baca_son"),
+        ("Kazı Derinlik Analizi", "csv:kazi-derinlik.csv", "Zemin−Akar Baş (m)", "zemin_akar_bas"),
+        ("Kazı Derinlik Analizi", "csv:kazi-derinlik.csv", "Zemin−Akar Son (m)", "zemin_akar_son"),
+        ("Kazı Derinlik Analizi", "csv:kazi-derinlik.csv", "Uzunluk (m)", "uzunluk"),
+        ("Kazı Derinlik Analizi", "csv:kazi-derinlik.csv", "Not", "not"),
     ], "anahtar-teslim")
     wb.save(cikti / "anahtar-teslim.xlsx")
 
