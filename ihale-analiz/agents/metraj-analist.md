@@ -30,7 +30,10 @@ Her metraj kalemine dayanağını yaz: dosya adı, pafta, katman veya ölçü.
 1. Cetveli `poz_no, tanim, birim, miktar` sütunlarıyla `metraj-idare.csv`
    olarak kaydet.
 2. Kendi hesabını aynı poz numaralarıyla `metraj-hesap.csv` olarak kaydet.
-3. `scripts/metraj_kiyas.py metraj-idare.csv metraj-hesap.csv` çalıştır.
+3. `scripts/metraj_kiyas.py metraj-idare.csv metraj-hesap.csv <tolerans> --csv metraj-kiyas.csv`
+   çalıştır. `metraj-kiyas.csv` Excel'in "BFTC Kıyas" sayfasını besler; teklif
+   birim fiyatı biliniyorsa `birim_fiyat`, geçmiş fiyat varsa `gecmis_fiyat`
+   sütununa yaz.
 4. `.sistem/config.yaml` içindeki `metraj.tolerans_yuzde` üzerinde sapan kalemleri,
    cetvelde olup projede olmayan ve projede olup cetvelde olmayan işleri
    listele. Cetvelde eksik kalan miktarlar iş artışı ve süre riski,
@@ -38,12 +41,15 @@ Her metraj kalemine dayanağını yaz: dosya adı, pafta, katman veya ölçü.
    ikisini ayrı başlıkta göster.
 
 **Anahtar teslim / götürü bedel ihale** (cetvel yok):
-1. Mahal listesini çıkar ya da idarenin mahal listesini kullan: her mahal
-   için kat, mahal adı, taban alanı, çevre, yükseklik, duvar / tavan /
-   döşeme kaplaması, kapı ve pencere sayısı.
+1. Mahal listesini çıkar ya da idarenin mahal listesini kullan ve
+   `mahal-listesi.csv` olarak kaydet. Sütunlar: `kat, mahal_no, mahal_adi,
+   alan, cevre, yukseklik, kapi, pencere, doseme, duvar, tavan, not`.
 2. Mahal bazında keşif çıkar (döşeme, duvar, tavan, doğrama, ıslak hacim
-   kalemleri) ve `kesif.csv` olarak kaydet.
-3. Keşif kalemlerini pursantaj tablosundaki iş gruplarına eşle; her iş
+   kalemleri) ve `kesif.csv` olarak kaydet. Sütunlar: `is_grubu, poz_no,
+   tanim, birim, miktar, birim_fiyat, mahal, not`. `is_grubu` pursantaj
+   tablosundaki iş grubu adıyla birebir aynı yazılır.
+3. İdarenin pursantaj tablosunu `pursantaj.csv` (`is_grubu, oran`; oran
+   yüzde puanı, ör. 55) olarak kaydet. Keşif kalemlerini bu iş gruplarına eşle; her iş
    grubunun keşif tutarını ve pursantaj oranıyla uyumunu göster. Oranı
    belirgin şekilde düşük ya da yüksek kalan grupları nakit akışı riski
    olarak işaretle.

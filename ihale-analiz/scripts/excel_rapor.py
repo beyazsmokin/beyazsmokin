@@ -1,141 +1,197 @@
 #!/usr/bin/env python3
-"""Bir ihale klasöründeki analiz çıktılarından Excel raporu üretir.
+"""Bir ihale klasöründeki analiz çıktılarını Excel şablonuna doldurur.
 
-Kullanım: python3 excel_rapor.py <İhaleler/ihale-kodu> [sablon.xlsx]
+Kullanım: python3 excel_rapor.py <İhaleler/ihale-kodu> [--tur birim-fiyat|anahtar-teslim] [--sablon dosya.xlsx]
 
-Okur: calisma/*.md (Markdown tabloları ve "- Alan: değer" satırları), calisma/*.csv
-Yazar: <ihale-kodu> Analiz.xlsx (ihale klasörünün içine)
+Şablon seçimi: --sablon verilmişse o; yoksa teklif türüne göre (01-ozet.md içindeki
+"Teklif türü" ya da --tur) önce .sistem/sablonlar/, sonra skill'in templates/excel/
+klasöründeki birim-fiyat.xlsx veya anahtar-teslim.xlsx.
 
-Şablon verilirse (ya da .sistem/sablonlar/analiz.xlsx varsa) o kopyalanır:
-şablonda aynı adlı sayfa varsa veriler o sayfanın ilk boş satırından itibaren
-yazılır, yoksa yeni sayfa eklenir. Gerektirir: openpyxl.
+Şablona sadık kalır: yalnızca şablonun gizli "_harita" sayfasında tanımlı sütunlara,
+formül içermeyen hücrelere yazar; sayfa, sütun, formül ya da biçim eklemez veya silmez.
+Yazar: <ihale-kodu> Analiz.xlsx (ihale klasörünün içine). Gerektirir: openpyxl.
 """
+import argparse
 import csv
 import re
 import sys
+import unicodedata
+from datetime import date
 from pathlib import Path
 
-from openpyxl import Workbook, load_workbook
-from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 
-SHEETS = [  # (sayfa adı, kaynak dosya)
-    ("Özet", "01-ozet.md"),
-    ("Yeterlilik", "02-idari.md"),
-    ("Teknik", "03-teknik.md"),
-    ("Mali", "04-mali.md"),
-    ("Riskler", "05-riskler.md"),
-    ("Metraj", "06-metraj.md"),
-]
-HEADER_FILL = PatternFill("solid", fgColor="163460")
-HEADER_FONT = Font(bold=True, color="FFFFFF")
-RISK_FILL = {"yüksek": "F4C7C3", "orta": "FCE8B2", "düşük": "D9EAD3"}
+BAS, HEADER_ROW = 5, 4
+SKILL_SABLON = Path(__file__).resolve().parent.parent / "templates" / "excel"
 
 
-def md_tables(text: str) -> list[list[list[str]]]:
-    tables, cur = [], []
+def norm(s: str) -> str:
+    s = unicodedata.normalize("NFKD", str(s).replace("ı", "i").replace("İ", "i")).lower()
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return re.sub(r"[^a-z0-9]", "", s)
+
+
+def md_tablo(text: str) -> list[dict]:
+    satirlar = [l.strip() for l in text.splitlines() if l.strip().startswith("|") and l.strip().endswith("|")]
+    satirlar = [[c.strip() for c in l.strip("|").split("|")] for l in satirlar]
+    satirlar = [s for s in satirlar if not all(re.fullmatch(r":?-+:?", c) for c in s if c)]
+    if not satirlar:
+        return []
+    bas = satirlar[0]
+    return [{norm(b): v for b, v in zip(bas, s)} for s in satirlar[1:]]
+
+
+def md_alanlar(text: str) -> dict:
+    out = {}
     for line in text.splitlines():
-        s = line.strip()
-        if s.startswith("|") and s.endswith("|"):
-            cells = [c.strip() for c in s.strip("|").split("|")]
-            if not all(re.fullmatch(r":?-+:?", c) for c in cells if c):
-                cur.append(cells)
-        elif cur:
-            tables.append(cur)
-            cur = []
-    if cur:
-        tables.append(cur)
-    return tables
+        m = re.match(r"\s*-\s*([^:]{1,80}):\s*(.*)", line)
+        if m and m.group(2).strip():
+            out[norm(m.group(1))] = m.group(2).strip()
+    return out
 
 
-def md_fields(text: str) -> list[list[str]]:
-    rows = []
-    for line in text.splitlines():
-        m = re.match(r"\s*-\s*([^:]{1,60}):\s*(.*)", line)
+def karar(ihale: Path) -> dict:
+    out = {norm("tarih"): date.today()}
+    for f in ihale.glob("*Rapor.md"):
+        m = re.search(r"\*\*Karar:\*\*\s*([^.\n]+)\.?\s*(.*)", f.read_text(encoding="utf-8"))
         if m:
-            rows.append([m.group(1).strip(), m.group(2).strip()])
-    return rows
+            out[norm("karar")] = m.group(1).strip()
+            out[norm("gerekce")] = m.group(2).strip()
+    return out
 
 
-def to_number(v: str):
-    s = v.replace("%", "").strip()
-    if re.fullmatch(r"[+-]?\d{1,3}(\.\d{3})*(,\d+)?", s) and ("," in s or "." in s):
-        s = s.replace(".", "").replace(",", ".")
-    try:
-        return float(s) if re.fullmatch(r"[+-]?\d+(\.\d+)?", s) else v
-    except ValueError:
-        return v
+def yaz(hucre, v, puan=False):
+    """Değeri hücreye yazar; yalnızca şablonda sayı/tarih biçimli hücrelerde dönüştürür.
+    puan: kaynak değer yüzde puanı (55 = %55) olarak verilmiştir."""
+    if hucre.number_format == "General" or isinstance(v, (int, float, date)):
+        hucre.value = v
+        return
+    s = str(v).strip()
+    m = re.fullmatch(r"(\d{1,2})[./](\d{1,2})[./](\d{4})", s)
+    if m and ("d" in hucre.number_format or "y" in hucre.number_format):
+        hucre.value = date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
+        return
+    hucre.value = sayi(s, "%" in hucre.number_format, puan)
 
 
-def write_block(ws, rows: list[list[str]], header: bool = True) -> None:
-    start = ws.max_row + 2 if ws.max_row > 1 or ws["A1"].value else 1
-    for i, row in enumerate(rows):
-        for j, val in enumerate(row, 1):
-            c = ws.cell(row=start + i, column=j, value=val if i == 0 and header else to_number(val))
-            c.alignment = Alignment(wrap_text=True, vertical="top")
-            if i == 0 and header:
-                c.fill, c.font = HEADER_FILL, HEADER_FONT
-        level = next((k for k in RISK_FILL if any(k in str(v).lower() for v in row)), None)
-        if level and i > 0:
-            for j in range(1, len(row) + 1):
-                ws.cell(row=start + i, column=j).fill = PatternFill("solid", fgColor=RISK_FILL[level])
+def sayi(s: str, yuzde=False, puan=False):
+    ham = s.replace("%", "").replace("TL", "").replace("₺", "").strip()
+    if re.fullmatch(r"[+-]?\d{1,3}(\.\d{3})+(,\d+)?|[+-]?\d+,\d+", ham):
+        ham = ham.replace(".", "").replace(",", ".")
+    if not re.fullmatch(r"[+-]?\d+(\.\d+)?", ham):
+        return s
+    n = float(ham)
+    if "%" in s or puan or (yuzde and n > 1):     # "%3", puan "3" ve oran hücresine "3" -> 0.03
+        return n / 100
+    return int(n) if n.is_integer() and not yuzde else n
 
 
-def autosize(ws) -> None:
-    for col in ws.columns:
-        width = max((len(str(c.value)) for c in col if c.value is not None), default=8)
-        ws.column_dimensions[get_column_letter(col[0].column)].width = min(max(width + 2, 10), 60)
-    ws.freeze_panes = "A2"
+def kaynak_oku(calisma: Path, ihale: Path, kaynak: str):
+    tip, _, ad = kaynak.partition(":")
+    if tip == "karar":
+        return karar(ihale)
+    f = calisma / ad
+    if not f.exists():
+        return None
+    if tip == "csv":
+        with open(f, encoding="utf-8-sig", newline="") as fh:
+            return [{norm(k): v for k, v in r.items() if k} for r in csv.DictReader(fh)]
+    text = f.read_text(encoding="utf-8")
+    return md_tablo(text) if tip == "tablo" else md_alanlar(text)
+
+
+def deger(kayit: dict, alan: str):
+    for a in alan.split("|"):
+        v = kayit.get(norm(a.rstrip("%")))
+        if v not in (None, ""):
+            return v
+    return None
+
+
+def tur_bul(calisma: Path, verilen: str | None) -> str:
+    if verilen:
+        return verilen
+    f = calisma / "01-ozet.md"
+    t = norm(md_alanlar(f.read_text(encoding="utf-8")).get(norm("Teklif türü"), "")) if f.exists() else ""
+    return "anahtar-teslim" if ("anahtar" in t or "goturu" in t) else "birim-fiyat"
+
+
+def sablon_bul(ihale: Path, tur: str) -> Path:
+    for parent in ihale.resolve().parents:
+        cand = parent / ".sistem" / "sablonlar" / f"{tur}.xlsx"
+        if cand.exists():
+            return cand
+    return SKILL_SABLON / f"{tur}.xlsx"
 
 
 def main() -> None:
-    if len(sys.argv) < 2:
-        sys.exit(__doc__)
-    ihale = Path(sys.argv[1])
-    calisma = ihale / "calisma"
-    kod = ihale.name
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("ihale", type=Path)
+    p.add_argument("--tur", choices=["birim-fiyat", "anahtar-teslim"])
+    p.add_argument("--sablon", type=Path)
+    a = p.parse_args()
 
-    sablon = Path(sys.argv[2]) if len(sys.argv) > 2 else None
-    if sablon is None:
-        for parent in ihale.resolve().parents:
-            cand = parent / ".sistem" / "sablonlar" / "analiz.xlsx"
-            if cand.exists():
-                sablon = cand
-                break
-    if sablon and sablon.exists():
-        wb = load_workbook(sablon)
-    else:
-        wb = Workbook()
-        wb.remove(wb.active)
+    ihale, calisma = a.ihale, a.ihale / "calisma"
+    tur = tur_bul(calisma, a.tur)
+    sablon = a.sablon or sablon_bul(ihale, tur)
+    if not sablon.exists():
+        sys.exit(f"Şablon bulunamadı: {sablon}")
+    wb = load_workbook(sablon)
+    if "_harita" not in wb.sheetnames:
+        sys.exit(f"{sablon} bir ihale-analiz şablonu değil (_harita sayfası yok)")
 
-    def sheet(name):
-        return wb[name] if name in wb.sheetnames else wb.create_sheet(name[:31])
+    gruplar: dict[tuple, list] = {}
+    for sayfa, kaynak, baslik, alan in wb["_harita"].iter_rows(min_row=3, values_only=True):
+        if sayfa:
+            gruplar.setdefault((sayfa, kaynak), []).append((baslik, alan))
 
-    for name, fname in SHEETS:
-        f = calisma / fname
-        if not f.exists():
+    rapor = []
+    for (sayfa, kaynak), eslesmeler in gruplar.items():
+        veri = kaynak_oku(calisma, ihale, kaynak)
+        if not veri or sayfa not in wb.sheetnames:
             continue
-        text = f.read_text(encoding="utf-8")
-        ws = sheet(name)
-        fields = md_fields(text)
-        if fields:
-            write_block(ws, [["Alan", "Değer"], *fields])
-        for t in md_tables(text):
-            write_block(ws, t)
-        autosize(ws)
+        ws = wb[sayfa]
+        if isinstance(veri, dict):            # Özet: A sütunundaki etikete göre B'ye yaz
+            etiket = {norm(ws.cell(r, 1).value): r for r in range(1, ws.max_row + 1) if ws.cell(r, 1).value}
+            for baslik, alan in eslesmeler:
+                r = etiket.get(norm(baslik))
+                v = deger(veri, alan)
+                if r and v is not None and not str(ws.cell(r, 2).value or "").startswith("="):
+                    yaz(ws.cell(r, 2), v, alan.endswith("%"))
+            rapor.append(f"{sayfa}: alanlar")
+            continue
+        sutun = {norm(ws.cell(HEADER_ROW, c).value): c for c in range(1, ws.max_column + 1) if ws.cell(HEADER_ROW, c).value}
+        kapasite = sum(1 for r in range(BAS, ws.max_row + 1))
+        for i, kayit in enumerate(veri):
+            if i >= kapasite:
+                print(f"UYARI: {sayfa} sayfası {kapasite} satırla sınırlı, {len(veri) - kapasite} satır yazılmadı")
+                break
+            r = BAS + i
+            for baslik, alan in eslesmeler:
+                c = sutun.get(norm(baslik))
+                if not c or str(ws.cell(r, c).value or "").startswith("="):
+                    continue
+                v = i + 1 if alan == "#sira" else deger(kayit, alan)
+                if v is not None:
+                    yaz(ws.cell(r, c), v, alan.endswith("%"))
+        rapor.append(f"{sayfa}: {min(len(veri), kapasite)} satır")
 
-    for f in sorted(calisma.glob("*.csv")):
-        with open(f, encoding="utf-8-sig", newline="") as fh:
-            rows = list(csv.reader(fh))
-        if rows:
-            ws = sheet(f.stem.replace("-", " ").title())
-            write_block(ws, rows)
-            autosize(ws)
+    # yazdırma alanını dolu satırlarla sınırla (boş şablon satırları basılmasın)
+    for ws in wb.worksheets:
+        if ws.title in ("Özet", "_harita") or ws.cell(HEADER_ROW, 1).value is None:
+            continue
+        son = HEADER_ROW
+        for r in range(BAS, ws.max_row + 1):
+            if any(ws.cell(r, c).value not in (None, "") and not str(ws.cell(r, c).value).startswith("=")
+                   for c in range(1, ws.max_column + 1)):
+                son = r
+        ws.print_area = f"A1:{get_column_letter(ws.max_column)}{son}"
 
-    if not wb.sheetnames:
-        sys.exit(f"{calisma} içinde rapora alınacak çıktı yok")
-    out = ihale / f"{kod} Analiz.xlsx"
+    out = ihale / f"{ihale.name} Analiz.xlsx"
     wb.save(out)
+    print(f"Şablon: {sablon.name} ({tur})")
+    print("\n".join(rapor))
     print(f"Excel raporu: {out}")
 
 

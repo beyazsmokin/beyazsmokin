@@ -21,7 +21,8 @@ ihale-analiz/
     ├── yeni_ihale.py         # Gelen Dosyalar'ı ihale klasörüne taşır
     ├── proje_oku.py          # DWG/DXF/PDF/görsel proje okuma
     ├── metraj_kiyas.py       # idare ve hesap metrajı kıyası
-    ├── excel_rapor.py        # Excel raporu üretir
+    ├── excel_rapor.py        # Excel raporunu şablona doldurur
+    ├── sablon_olustur.py     # BFTC ve anahtar teslim şablonlarını üretir
     └── vt.py                 # öğrenen veritabanı (SQLite)
 ```
 

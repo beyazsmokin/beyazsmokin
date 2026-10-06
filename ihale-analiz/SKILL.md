@@ -90,8 +90,18 @@ altındaki Markdown dosyalarına yazılır (`ogrenilenler.md`,
 ## 4. Çıktı
 
 Rapor [templates/analiz-raporu.md](templates/analiz-raporu.md) şablonunu,
-Excel `scripts/excel_rapor.py` betiğini kullanır (`.sistem/sablonlar/analiz.xlsx`
-varsa ona yazar). Kullanıcıya önce tek cümlelik karar (Katıl / Şartlı katıl /
+Excel `scripts/excel_rapor.py` betiğiyle teklif türüne göre şablona yazılır:
+
+- **Birim fiyatlı (BFTC)** ihale: `birim-fiyat.xlsx` (Özet, BFTC Kıyas,
+  Yeterlilik, Teknik, Mali, Riskler, Yapılacaklar)
+- **Anahtar teslim / götürü bedel** ihale: `anahtar-teslim.xlsx` (Özet, Mahal
+  Listesi, Keşif, Pursantaj, Yeterlilik, Teknik, Mali, Riskler, Yapılacaklar)
+
+**Şablona sadık kal.** Excel çıktısı her zaman bu iki şablondan biridir.
+Sayfa, sütun, formül ya da biçim ekleme, silme, değiştirme; ajan çıktıları
+şablonun beklediği tablo ve CSV biçimine uyar. Şablonda değişiklik yalnızca
+kullanıcı isterse yapılır: `scripts/sablon_olustur.py` güncellenir, şablonlar
+yeniden üretilir ve `.sistem/sablonlar/` altındaki kopyalar değiştirilir. Kullanıcıya önce tek cümlelik karar (Katıl / Şartlı katıl /
 Katılma), sonra iki dosyanın yolu verilir.
 
 ## 5. Sınırlar
