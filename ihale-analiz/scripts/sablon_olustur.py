@@ -366,23 +366,20 @@ def anahtar_teslim(cikti: Path):
 
     ws = wb.create_sheet("Mahal Listesi")
     baslik(ws, "MAHAL LİSTESİ",
-           "Projeden ya da idarenin mahal listesinden çıkarılan mahaller. Duvar alanı çevre × yükseklikten hesaplanır "
-           "(kapı ve pencere boşlukları düşülmemiştir).", 13)
+           "Her mahalde yapılacak imalatların cinsi. Miktarlar burada değil, Keşif sayfasındadır.", 11)
     tablo(ws, [
         ("Kat", 8, None, None),
         ("Mahal No", 10, None, None),
-        ("Mahal Adı", 26, None, None),
+        ("Mahal Adı", 24, None, None),
         ("Taban Alanı (m²)", 12, '#,##0.00', None),
-        ("Çevre (m)", 10, '#,##0.00', None),
-        ("Yükseklik (m)", 10, '#,##0.00', None),
-        ("Duvar Alanı (m²)", 12, '#,##0.00', '=IF(OR(E{r}="",F{r}=""),"",E{r}*F{r})'),
-        ("Kapı Adedi", 8, "0", None),
-        ("Pencere Adedi", 8, "0", None),
-        ("Döşeme Kaplaması", 20, None, None),
-        ("Duvar Kaplaması", 20, None, None),
-        ("Tavan Kaplaması", 20, None, None),
-        ("Not", 30, None, None),
-    ], toplamlar=(4, 7, 8, 9))
+        ("Döşeme", 22, None, None),
+        ("Süpürgelik", 18, None, None),
+        ("Duvar", 22, None, None),
+        ("Tavan", 20, None, None),
+        ("Kapı Tipi", 18, None, None),
+        ("Pencere Tipi", 18, None, None),
+        ("Not", 28, None, None),
+    ], toplamlar=(4,))
 
     ws = wb.create_sheet("Keşif")
     baslik(ws, "KEŞİF",
@@ -425,13 +422,12 @@ def anahtar_teslim(cikti: Path):
         ("Mahal Listesi", "csv:mahal-listesi.csv", "Mahal No", "mahal_no"),
         ("Mahal Listesi", "csv:mahal-listesi.csv", "Mahal Adı", "mahal_adi"),
         ("Mahal Listesi", "csv:mahal-listesi.csv", "Taban Alanı (m²)", "alan"),
-        ("Mahal Listesi", "csv:mahal-listesi.csv", "Çevre (m)", "cevre"),
-        ("Mahal Listesi", "csv:mahal-listesi.csv", "Yükseklik (m)", "yukseklik"),
-        ("Mahal Listesi", "csv:mahal-listesi.csv", "Kapı Adedi", "kapi"),
-        ("Mahal Listesi", "csv:mahal-listesi.csv", "Pencere Adedi", "pencere"),
-        ("Mahal Listesi", "csv:mahal-listesi.csv", "Döşeme Kaplaması", "doseme"),
-        ("Mahal Listesi", "csv:mahal-listesi.csv", "Duvar Kaplaması", "duvar"),
-        ("Mahal Listesi", "csv:mahal-listesi.csv", "Tavan Kaplaması", "tavan"),
+        ("Mahal Listesi", "csv:mahal-listesi.csv", "Döşeme", "doseme"),
+        ("Mahal Listesi", "csv:mahal-listesi.csv", "Süpürgelik", "supurgelik"),
+        ("Mahal Listesi", "csv:mahal-listesi.csv", "Duvar", "duvar"),
+        ("Mahal Listesi", "csv:mahal-listesi.csv", "Tavan", "tavan"),
+        ("Mahal Listesi", "csv:mahal-listesi.csv", "Kapı Tipi", "kapi_tipi"),
+        ("Mahal Listesi", "csv:mahal-listesi.csv", "Pencere Tipi", "pencere_tipi"),
         ("Mahal Listesi", "csv:mahal-listesi.csv", "Not", "not"),
         ("Keşif", "csv:kesif.csv", "Sıra No", "#sira"),
         ("Keşif", "csv:kesif.csv", "İş Grubu", "is_grubu"),

@@ -43,7 +43,10 @@ Her metraj kalemine dayanağını yaz: dosya adı, pafta, katman veya ölçü.
 **Anahtar teslim / götürü bedel ihale** (cetvel yok):
 1. Mahal listesini çıkar ya da idarenin mahal listesini kullan ve
    `mahal-listesi.csv` olarak kaydet. Sütunlar: `kat, mahal_no, mahal_adi,
-   alan, cevre, yukseklik, kapi, pencere, doseme, duvar, tavan, not`.
+   alan, doseme, supurgelik, duvar, tavan, kapi_tipi, pencere_tipi, not`.
+   Mahal listesi imalat cinsini verir, miktar içermez. Çevre, yükseklik,
+   duvar alanı, kapı ve pencere adedi gibi ara ölçüleri yalnızca keşif
+   hesabında kullan; sonuç miktarları keşfe yaz.
 2. Mahal bazında keşif çıkar (döşeme, duvar, tavan, doğrama, ıslak hacim
    kalemleri) ve `kesif.csv` olarak kaydet. Sütunlar: `is_grubu, poz_no,
    tanim, birim, miktar, birim_fiyat, mahal, not`. `is_grubu` pursantaj

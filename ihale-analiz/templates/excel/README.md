@@ -18,7 +18,7 @@ Kurulumda bu klasör `.sistem/sablonlar/` altına kopyalanır.
 |-------|--------|
 | Özet | `01-ozet.md` alanları, rapordaki karar satırı |
 | BFTC Kıyas | `metraj-kiyas.csv`: poz_no, tanim, birim, idare, hesap, birim_fiyat, gecmis_fiyat, not |
-| Mahal Listesi | `mahal-listesi.csv`: kat, mahal_no, mahal_adi, alan, cevre, yukseklik, kapi, pencere, doseme, duvar, tavan, not |
+| Mahal Listesi | `mahal-listesi.csv`: kat, mahal_no, mahal_adi, alan, doseme, supurgelik, duvar, tavan, kapi_tipi, pencere_tipi, not |
 | Keşif | `kesif.csv`: is_grubu, poz_no, tanim, birim, miktar, birim_fiyat, mahal, not |
 | Pursantaj | `pursantaj.csv`: is_grubu, oran (yüzde puanı) |
 | Yeterlilik | `02-idari.md` tablosu: Koşul, Madde, Firma durumu, Not |
