@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1d4f91">
+<meta name="description" content="İhale takibi, ajanda, analiz süreci ve raporlar">
+<title>İhale Analiz</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" href="/ikon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="stylesheet" href="/stil.css">
+</head>
+<body>
+<div class="kabuk">
+  <aside class="kenar">
+    <div class="marka"><img src="/ikon-192.png" alt=""><div><b>İhale Analiz</b><small>Kontrol paneli</small></div></div>
+    <nav class="menu" id="menu"></nav>
+    <div class="alt">
+      <button class="dugme ana-d" data-eylem="yeni-ihale"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Yeni ihale</button>
+      <button class="dugme" id="kur-dugme" hidden>Uygulamayı yükle</button>
+    </div>
+  </aside>
+  <div class="ana">
+    <div class="uyari-serit" id="cevrimdisi" hidden>Panel sunucusu kapalı. Son kaydedilen veriler gösteriliyor; değişiklik yapılamaz.</div>
+    <header class="ust">
+      <h1 id="baslik">İhale Analiz</h1>
+      <button class="dugme simge" data-eylem="tema" title="Tema" aria-label="Temayı değiştir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+      <button class="dugme ana-d gizle-mobil" data-eylem="yeni-ihale">Yeni ihale</button>
+    </header>
+    <main class="icerik" id="icerik"><div class="bos">Yükleniyor…</div></main>
+  </div>
+</div>
+<nav class="alt-menu" id="alt-menu"></nav>
+<div class="bildirimler" id="bildirimler" aria-live="polite"></div>
+<dialog id="pencere"></dialog>
+<script src="/app.js"></script>
+</body>
+</html>

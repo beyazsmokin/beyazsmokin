@@ -15,6 +15,7 @@ ihale-analiz/
 │   └── workspace-template/   # çalışma alanına kopyalanan dosyalar
 ├── templates/                # rapor şablonu
 ├── platforms/                # ChatGPT, Hermes ve genel prompt
+├── panel/                    # ihale paneli arayüzü (PWA: index.html, app.js, sw.js, manifest)
 ├── assets/ikon.png|.ico      # klasör simgesi
 ├── kur.bat                   # Windows: çift tıkla kur
 └── scripts/
@@ -26,6 +27,9 @@ ihale-analiz/
     ├── excel_rapor.py        # Excel raporunu şablona doldurur
     ├── sablon_olustur.py     # BFTC ve anahtar teslim şablonlarını üretir
     ├── siteler.py            # ihale sitesi giriş paneli, şifre kasası, oturum
+    ├── panel.py              # ihale paneli sunucusu (yalnızca 127.0.0.1), otomatik başlatma
+    ├── takip.py              # takip edilen ihaleler, ajanda, analiz süreci (panel ve ajanların ortak verisi)
+    ├── html_rapor.py         # raporu HTML'e ve PDF'e çevirir
     ├── tara.py               # ihale listesini profile ve tercihlere göre skorlar
     ├── kisisel_hesap.py      # kişisel hesap kurallarını sistem tahmininin yanına koyar
     └── vt.py                 # öğrenen veritabanı (SQLite)
@@ -56,6 +60,31 @@ kurum birim fiyatı, rakip, katılımcı ve tenzilat analizi yer almaz; yaklaş�
 maliyet yalnızca rayiçlerle hesaplanır. İhale dosyaları `Gelen Dosyalar` klasörüne bırakılır; her ihale
 `İhaleler/<kod>/` altında kendi klasörüne alınır, çıktılar oraya yazılır.
 
+## İhale paneli
+
+Kurulumdan sonra çalışma alanındaki **İhale Paneli** kısayolu (ya da
+`python .sistem/skill/scripts/panel.py`) paneli tarayıcıda açar. Panel
+bilgisayarda çalışır, dış sunucu kullanmaz ve tarayıcıdan uygulama (PWA) olarak
+kurulabilir; sunucu kapalıyken son görülen veriler yine açılır.
+
+| Bölüm | Ne yapar |
+|-------|----------|
+| Gösterge | Açık ihaleler, 7 gün içindeki ihale günleri, analiz süreci, son raporlar, kazanma oranı |
+| İhaleler | İhale ekle (dosya yükleme dahil), ara, filtrele, CSV indir; ihale başına bilgiler, süreç, rapor, dosyalar ve tarihler |
+| Ajanda | Ay ve liste görünümü; ihale günü, yer görme, açıklama talebi, teminat; 7/3/1 gün kala hatırlatma; `.ics` ile takvime aktarma |
+| Süreç | Ajanların adımları canlı (`calisma/durum.json`), günlük kaydı |
+| Raporlar | HTML rapor panelde açılır, yazdırılır; PDF ve Excel indirilir |
+| Taramalar | Günlük tarama listeleri; tek tıkla takibe alma |
+| Öğrenme | Kazanma oranı, tenzilat, rakipler, idareler, dersler, kişisel kurallar, tercih eğilimleri |
+| Ayarlar | İhale sitesi girişi, bildirimler, tema, otomatik analiz komutu |
+
+"Analizi başlat" ihaleyi kuyruğa alır; asistana "kuyruktaki ihaleleri analiz et"
+denince işlenir. `config.yaml` > `panel.analiz_komutu` tanımlanırsa (ör. Claude
+Code: `claude -p 'ihale-analiz: {kod} için analiz zincirini başlat'`) analiz
+panelden hemen başlar. Güvenlik: panel yalnızca 127.0.0.1'i dinler, başka
+adresten gelen ve panelin kendisinden gelmeyen değiştirme isteklerini reddeder,
+dosya erişimi `İhaleler/` klasörüyle sınırlıdır, şifre görmez.
+
 ## Durum
 
-İskelet (v0.1.0). Paketleme ve testler sonraki adımda.
+İskelet (v0.1.0) ve ihale paneli. Paketleme ve testler sonraki adımda.

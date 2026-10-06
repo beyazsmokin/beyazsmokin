@@ -71,3 +71,15 @@ dosya olarak paylaşırsa aynı analizler yapılır.
    bilgisayarında çalıştırmasını söyle.
 5. Kullanıcıya klasörün yerini ve ihale dosyalarını `Gelen Dosyalar`
    klasörüne bırakmasını söyle.
+6. **İhale paneli.** Kurulum çalışma alanına `İhale Paneli` kısayolunu koyar
+   (Windows `.bat`, macOS `.command`, Linux `.desktop`). Kullanıcıya şunu anlat:
+   - Kısayola çift tıklayınca panel tarayıcıda açılır (http://127.0.0.1:8765).
+     Panel yalnızca bu bilgisayarda çalışır, internete açılmaz.
+   - Chrome ya da Edge adres çubuğundaki **Uygulamayı yükle** ile panel masaüstü
+     uygulaması gibi kurulur; kendi simgesi ve penceresi olur.
+   - Panelden ihale eklenir, dosyası yüklenir, ihale günü ve diğer tarihler
+     ajandada izlenir, analiz süreci canlı görülür, HTML rapor okunur, PDF ve
+     Excel indirilir.
+   - İsterse bilgisayar açılınca panel kendiliğinden başlar:
+     `python .sistem/skill/scripts/panel.py baslangic --ac`. Kullanıcı isterse
+     çalıştır, kendiliğinden açma.
