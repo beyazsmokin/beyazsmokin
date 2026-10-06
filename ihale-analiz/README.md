@@ -23,7 +23,8 @@ ihale-analiz/
     ├── proje_oku.py          # DWG/DXF/PDF/görsel proje okuma
     ├── dwg_cevirici.py       # DWG çeviricisini bulur, yoksa kullanıcıya açıklar
     ├── metraj_kiyas.py       # idare ve hesap metrajı kıyası
-    ├── excel_rapor.py        # Excel raporu üretir
+    ├── excel_rapor.py        # Excel raporunu şablona doldurur
+    ├── sablon_olustur.py     # BFTC ve anahtar teslim şablonlarını üretir
     ├── tara.py               # ihale listesini profile ve tercihlere göre skorlar
     ├── kisisel_hesap.py      # kişisel hesap kurallarını sistem tahmininin yanına koyar
     └── vt.py                 # öğrenen veritabanı (SQLite)
