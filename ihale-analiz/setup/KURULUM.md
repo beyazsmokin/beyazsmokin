@@ -39,5 +39,10 @@ Kullanıcıya hafızanın sohbette tutulacağını söyle, `firma-profili.md`
 1. Kullanıcıya firma profili sorularını sor (`.sistem/hafiza/firma-profili.md`).
    Cevap vermek istemediği alanları boş bırak.
 2. `.sistem/config.yaml` içinde `platform` alanını doldur.
-3. Kullanıcıya klasörün yerini ve ihale dosyalarını `Gelen Dosyalar`
+3. `scripts/dwg_cevirici.py` çalıştır. Çevirici yoksa çıktıdaki açıklamayı
+   kullanıcıya kendi sözlerinle ilet: DWG'nin neden çevrilmesi gerektiği,
+   ODA File Converter'ı kurarsa DWG'lerin otomatik okunacağı, kurmazsa her
+   DWG için DXF ya da PDF halini vermesi gerekeceği. Kurulum betiği aynı
+   açıklamayı yazar ve indirme sayfasını açmayı önerir.
+4. Kullanıcıya klasörün yerini ve ihale dosyalarını `Gelen Dosyalar`
    klasörüne bırakmasını söyle.
