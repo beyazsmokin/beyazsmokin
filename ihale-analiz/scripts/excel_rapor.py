@@ -53,7 +53,9 @@ def md_alanlar(text: str) -> dict:
 
 def karar(ihale: Path) -> dict:
     out = {norm("tarih"): date.today()}
-    for f in ihale.glob("*Rapor.md"):
+    for f in ihale.glob("* Rapor.md"):
+        if f.stem.endswith("Ön İnceleme Rapor"):
+            continue
         m = re.search(r"\*\*Karar:\*\*\s*([^.\n]+)\.?\s*(.*)", f.read_text(encoding="utf-8"))
         if m:
             out[norm("karar")] = m.group(1).strip()

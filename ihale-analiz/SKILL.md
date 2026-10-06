@@ -66,12 +66,29 @@ kendi uygulama penceresinde açar (görev çubuğunda kendi simgesi olur), dış
 kullanmaz. Kullanıcı panelden takip sitesindeki ilanları ve sonuçları görür, takibe alır
 (sitedeki takip listesine de yazılır), İKN yazarak ihale ekler, EKAP ihale dosyasını indirir, ihale günlerini, yer görme,
 açıklama talebi gibi tarihleri ajandada izler (.ics ile takvimine aktarır),
-"Analizi başlat" ile ihaleyi kuyruğa alır, analiz sürecini adım adım canlı izler,
-HTML raporu panelde okur, PDF ve Excel'i indirir, ihale sonucunu girer.
-Panel ve ajanlar aynı veritabanını kullanır; ortak veri katmanı `scripts/takip.py`.
+analiz sürecini adım adım canlı izler, HTML raporu panelde okur, PDF ve Excel'i indirir,
+ihale sonucunu girer. Panel ve ajanlar aynı veritabanını kullanır; ortak veri katmanı
+`scripts/takip.py`.
+
+**Analiz motoru** (`scripts/motor.py`): panel analizi kendisi çalıştırır, kuyrukta bekletmez.
+- Takibe alınan ihale için **ön inceleme** hemen başlar (ihale dosyası gerekmez): ilan
+  bilgisi, idarenin geçmişi, rakip ve tenzilat (`vt.py`), uygunluk puanı (`tara.py`), kısa
+  değerlendirme; çıktı `<kod> Ön İnceleme Rapor.md/.html`, karar Detaylı incele / Dikkatle
+  incele / Geç.
+- `kaynak/` doluyken "Analizi başlat" **detaylı analizi** çalıştırır: 2. bölümdeki 0-5 adımlarını
+  ajanlarla (yapay zekâ) ve betiklerle (`belge_metni.py`, `proje_oku.py`, `metraj_kiyas.py`,
+  `kisisel_hesap.py`, `excel_rapor.py`, `html_rapor.py`, `vt.py`) yürütür, her adımı panelde
+  canlı gösterir, rapor ve Excel'i ihale klasörüne bırakır, öğrenme kaydını yapar.
+- Ajanları çalıştıran yapay zekâ `scripts/yz.py`'dir (`config.yaml` > analiz.yz): bilgisayarda
+  Claude Code, Claude API, ChatGPT ya da Hermes/yerel model (OpenAI uyumlu). Bağlantı yoksa ön
+  inceleme kural tabanlı yapılır; detaylı analizde dokümanlar hazırlanır, ihale kuyruğa
+  (`hesaplanacak`) alınır ve ajan adımlarını sohbetteki asistan yapar. Kullanıcı "panel analizi
+  kendisi yapsın" derse `motor.py durum` ile bağlantıyı kontrol et; API anahtarını sohbette isteme,
+  `motor.py anahtar --saglayici anthropic` komutunu kullanıcının kendisinin çalıştırmasını söyle.
 
 - Kullanıcı "kuyruktaki ihaleleri analiz et" derse `takip.py kuyruk` listesindeki
-  her ihale için 2. bölümdeki akışı çalıştır.
+  her ihale için 2. bölümdeki akışı çalıştır. Motorun hazırladığı `calisma/00-belgeler.md`
+  (doküman metni), `00-proje.md` ve `00-baglam.md` varsa 0. adımı yeniden yapma.
 - Akış boyunca her adımın başında ve sonunda
   `takip.py adim --kod <kod> --adim <0|1|2a|2b|2c|2d|3|4|5> --durum basladi|bitti|hata [--mesaj "..."]`
   yaz; panel süreci buradan gösterir. Kod çalıştırılamıyorsa adım çıktı dosyalarından

@@ -34,6 +34,9 @@ ETIKETLER = ("BELGE", "RESMİ", "ARŞİV", "TAHMİN")
 
 # --- Markdown -> HTML (yalnızca raporlarda kullanılan alt küme) --------------------
 
+ON_EK = "Ön İnceleme Rapor"
+
+
 def satir_ici(s: str) -> str:
     kodlar = []
 
@@ -171,7 +174,9 @@ def md_html(md: str) -> tuple[str, list[tuple[str, str]]]:
 
 # --- Sayfa --------------------------------------------------------------------------
 
-KARAR_SINIF = (("şartlı", "sartli"), ("katılma", "katilma"), ("katil", "katil"), ("katıl", "katil"))
+KARAR_SINIF = (("şartlı", "sartli"), ("katılma", "katilma"), ("katil", "katil"), ("katıl", "katil"),
+               # ön inceleme kararları
+               ("detaylı incele", "katil"), ("dikkatle incele", "sartli"), ("geç", "katilma"))
 
 
 def karar_bul(md: str) -> tuple[str | None, str | None]:
@@ -345,11 +350,14 @@ def pdf_yaz(html_yolu: Path, pdf_yolu: Path) -> str | None:
         return None
 
 
-def olustur(klasor: Path, pdf: bool = True) -> dict:
-    md_yolu = next(iter(sorted(klasor.glob("* Rapor.md"))), None)
+def olustur(klasor: Path, pdf: bool = True, md_yolu: Path | None = None) -> dict:
+    """Analiz raporunu çevirir; yoksa ön inceleme raporunu (<kod> Ön İnceleme Rapor.md)."""
+    if not md_yolu:
+        bulunan = sorted(klasor.glob("* Rapor.md"), key=lambda f: f.stem.endswith(ON_EK))
+        md_yolu = next(iter(bulunan), None)
     if not md_yolu:
         raise FileNotFoundError(f"Rapor bulunamadı: {klasor}/<kod> Rapor.md")
-    kod = md_yolu.name[: -len(" Rapor.md")]
+    kod = md_yolu.name[: -len(" Rapor.md")].removesuffix(" " + ON_EK[: -len(" Rapor")])
     html_yolu = md_yolu.with_suffix(".html")
     html_yolu.write_text(sayfa(md_yolu.read_text(encoding="utf-8"), kod), encoding="utf-8")
     sonuc = {"html": html_yolu, "pdf": None, "pdf_yolu": None}

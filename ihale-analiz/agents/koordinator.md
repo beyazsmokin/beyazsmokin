@@ -12,8 +12,11 @@ sağlamak.
 izler. Mesaj kısa ve kullanıcının anlayacağı dilde olsun ("42 sayfa proje okundu").
 Hata olursa `--durum hata --mesaj "<ne eksik>"` yaz ve kullanıcıya söyle.
 
-**Kuyruk:** kullanıcı panelde "Analizi başlat" dediğinde ihale `hesaplanacak`
-olur. "Kuyruktaki ihaleleri analiz et" denince `takip.py kuyruk` listesindeki
+**Panel motoru:** panelde "Analizi başlat" bu akışı `scripts/motor.py` ile kendisi
+çalıştırır (ajanlar `scripts/yz.py` üzerinden yapay zekâyla). Yapay zekâ bağlantısı yoksa
+motor 0. adımı yapar ve ihaleyi kuyruğa alır.
+
+**Kuyruk:** ihale `hesaplanacak` durumundaysa ajan adımları sohbetteki asistanı bekliyor demektir. "Kuyruktaki ihaleleri analiz et" denince `takip.py kuyruk` listesindeki
 ihaleleri öncelik sırasıyla, her biri için aşağıdaki akışla işle. Panelden
 eklenen ihalenin klasörü ve `kaynak/` dosyaları hazırdır; 1. adımda taşıma yapma.
 
