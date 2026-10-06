@@ -14,6 +14,11 @@ Kullanım (veritabanı yolu varsayılan: <çalışma alanı>/.sistem/veritabani/
   vt.py pursantaj-ort --tur anahtar_teslim      # geçmiş ortalama pursantaj oranları
   vt.py baglam [--idare I] [--konu K] [--ajan A] # ajana verilecek geçmiş bilgi (Markdown)
   vt.py ara KELIME
+  vt.py tercih --ikn I --karar begen|reddet [--idare I --il IL --tur T --konu K --yaklasik 2500000 --neden "..."]
+  vt.py tercih-ozet                             # beğen/reddet eğilimleri (tarayıcı skoru buradan beslenir)
+  vt.py kural-ekle --ad "Beton firesi" --kapsam beton --islem yuzde_ekle --deger 15 --cumle "betona %15 fire eklerim"
+  vt.py kural-listele
+  vt.py kural-kapat --id 3
 """
 import argparse
 import csv
@@ -38,6 +43,14 @@ CREATE TABLE IF NOT EXISTS pursantaj (
 CREATE TABLE IF NOT EXISTS dersler (
   id INTEGER PRIMARY KEY AUTOINCREMENT, tarih TEXT, metin TEXT, idare TEXT,
   ajan TEXT, etiket TEXT, ihale_kod TEXT, kullanim INTEGER DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS tercihler (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, tarih TEXT, ikn TEXT, karar TEXT, idare TEXT,
+  il TEXT, tur TEXT, konu TEXT, yaklasik_maliyet REAL, neden TEXT
+);
+CREATE TABLE IF NOT EXISTS hesap_kurallari (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, tarih TEXT, ad TEXT, kapsam TEXT, islem TEXT,
+  deger REAL, kaynak_cumle TEXT, aktif INTEGER DEFAULT 1
 );
 CREATE INDEX IF NOT EXISTS ix_metraj_poz ON metraj(poz_no);
 CREATE INDEX IF NOT EXISTS ix_ihale_idare ON ihaleler(idare);
@@ -183,6 +196,13 @@ def cmd_baglam(con, a):
         "SELECT COUNT(*) n, SUM(sonuc='kazanildi') k FROM ihaleler").fetchone()
     print(f"\n## Genel\n- Toplam analiz: {ozet['n']}, kazanılan: {ozet['k'] or 0}")
 
+    agirlik = tercih_agirliklari(con)
+    if agirlik:
+        etiket = dict(TERCIH_ALANLARI)
+        print("\n## Kullanıcı tercihleri")
+        for (alan, deger), (b, r, w) in sorted(agirlik.items(), key=lambda x: -abs(x[1][2]))[:10]:
+            print(f"- {etiket[alan]} = {deger}: {b} beğeni, {r} ret")
+
 
 def cmd_ara(con, a):
     q = f"%{a.kelime}%"
@@ -194,6 +214,72 @@ def cmd_ara(con, a):
         print(f"poz: {r['poz_no']} | {r['tanim']}")
     for r in con.execute("SELECT tarih, metin FROM dersler WHERE metin LIKE ? OR etiket LIKE ?", (q, q)):
         print(f"ders: {r['tarih']} | {r['metin']}")
+
+
+ISLEMLER = ("yuzde_ekle", "yuzde_cikar", "tutar_ekle", "birim_fiyat")
+TERCIH_ALANLARI = (("idare", "İdare"), ("il", "İl"), ("tur", "Tür"))
+ASGARI_KAYIT = 3  # bir özellik bu kadar kararda görülmeden ağırlık almaz
+
+
+def cmd_tercih(con, a):
+    if a.karar not in ("begen", "reddet"):
+        raise SystemExit("--karar begen ya da reddet olmalı")
+    con.execute(
+        """INSERT INTO tercihler (tarih, ikn, karar, idare, il, tur, konu, yaklasik_maliyet, neden)
+           VALUES (?,?,?,?,?,?,?,?,?)""",
+        (today(), a.ikn, a.karar, a.idare, a.il, a.tur, a.konu, num(a.yaklasik), a.neden))
+    print(f"Tercih kaydedildi: {a.ikn} -> {a.karar}")
+
+
+def tercih_agirliklari(con) -> dict:
+    """{(alan, değer): (beğeni, ret, ağırlık)}; ağırlık -1..+1, en az ASGARI_KAYIT kararla."""
+    sonuc = {}
+    for alan, _ in TERCIH_ALANLARI:
+        for r in con.execute(
+                f"""SELECT {alan} deger, SUM(karar='begen') b, SUM(karar='reddet') r FROM tercihler
+                    WHERE {alan} IS NOT NULL AND {alan} != '' GROUP BY {alan}"""):
+            n = r["b"] + r["r"]
+            if n >= ASGARI_KAYIT:
+                sonuc[(alan, r["deger"])] = (r["b"], r["r"], (r["b"] - r["r"]) / n)
+    return sonuc
+
+
+def cmd_tercih_ozet(con, a):
+    toplam = con.execute("SELECT COUNT(*) FROM tercihler").fetchone()[0]
+    print(f"# Tercih eğilimleri\n\nToplam karar: {toplam}. "
+          f"Bir özellik en az {ASGARI_KAYIT} kararda görülmeden ağırlık almaz.\n")
+    agirlik = tercih_agirliklari(con)
+    if not agirlik:
+        print("- Henüz ağırlık alacak kadar karar yok")
+        return
+    etiket = dict(TERCIH_ALANLARI)
+    for (alan, deger), (b, r, w) in sorted(agirlik.items(), key=lambda x: x[1][2]):
+        yon = "öne çıkar" if w > 0 else "geri düşer" if w < 0 else "nötr"
+        print(f"- {etiket[alan]} = {deger}: {b} beğeni, {r} ret, ağırlık {w:+.2f} ({yon})")
+
+
+def cmd_kural_ekle(con, a):
+    if a.islem not in ISLEMLER:
+        raise SystemExit(f"--islem şunlardan biri olmalı: {', '.join(ISLEMLER)}")
+    con.execute(
+        "INSERT INTO hesap_kurallari (tarih, ad, kapsam, islem, deger, kaynak_cumle) VALUES (?,?,?,?,?,?)",
+        (today(), a.ad, a.kapsam, a.islem, num(a.deger), a.cumle))
+    print(f"Kural kaydedildi: {a.ad}")
+
+
+def cmd_kural_listele(con, a):
+    rows = con.execute("SELECT * FROM hesap_kurallari ORDER BY id").fetchall()
+    if not rows:
+        print("Kişisel hesap kuralı yok")
+    for r in rows:
+        durum = "aktif" if r["aktif"] else "kapalı"
+        print(f"{r['id']}. {r['ad']} | kapsam: {r['kapsam'] or 'hepsi'} | {r['islem']} {r['deger']} | "
+              f"{durum} | \"{r['kaynak_cumle'] or ''}\"")
+
+
+def cmd_kural_kapat(con, a):
+    cur = con.execute("UPDATE hesap_kurallari SET aktif=0 WHERE id=?", (a.id,))
+    print("Kural kapatıldı" if cur.rowcount else f"Kural bulunamadı: {a.id}")
 
 
 def main() -> None:
@@ -243,6 +329,31 @@ def main() -> None:
     s = sub.add_parser("ara")
     s.add_argument("kelime")
     s.set_defaults(fn=cmd_ara)
+
+    s = sub.add_parser("tercih")
+    s.add_argument("--ikn", required=True)
+    s.add_argument("--karar", required=True, help="begen | reddet")
+    for f in ("idare", "il", "tur", "konu", "yaklasik", "neden"):
+        s.add_argument(f"--{f}")
+    s.set_defaults(fn=cmd_tercih)
+
+    s = sub.add_parser("tercih-ozet")
+    s.set_defaults(fn=cmd_tercih_ozet)
+
+    s = sub.add_parser("kural-ekle")
+    s.add_argument("--ad", required=True)
+    s.add_argument("--kapsam", help="poz öneki (15.150) ya da tanımda geçen kelime (beton); boşsa tüm kalemler")
+    s.add_argument("--islem", required=True, help=" | ".join(ISLEMLER))
+    s.add_argument("--deger", required=True)
+    s.add_argument("--cumle", help="kullanıcının kuralı söylediği cümle")
+    s.set_defaults(fn=cmd_kural_ekle)
+
+    s = sub.add_parser("kural-listele")
+    s.set_defaults(fn=cmd_kural_listele)
+
+    s = sub.add_parser("kural-kapat")
+    s.add_argument("--id", required=True, type=int)
+    s.set_defaults(fn=cmd_kural_kapat)
 
     a = p.parse_args()
     con = connect(a.vt or default_db())

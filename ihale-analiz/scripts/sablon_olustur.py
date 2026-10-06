@@ -203,6 +203,16 @@ def ortak_sayfalar(wb):
     secim(ws, "D", ["Düşük", "Orta", "Yüksek"])
     renk(ws, f"D{BAS}:D{SON}", [("Yüksek", KIRMIZI), ("Orta", SARI), ("Düşük", YESIL)])
 
+    ws = wb.create_sheet("Kişisel Hesap")
+    baslik(ws, "KİŞİSEL HESAP",
+           "Kullanıcının kendi hesap kurallarıyla bulunan tutarın sistem tahminiyle karşılaştırması "
+           "(kisisel_hesap.py çıktısı).", 10)
+    tablo(ws, [("Sıra", 6, None, None), ("Poz No", 16, None, None), ("Tanım", 40, None, None),
+               ("Birim", 8, None, None), ("Miktar", 13, MIKTAR, None), ("Birim Fiyat", 14, PARA, None),
+               ("Sistem Tutarı", 17, PARA, None), ("Kişisel Tutar", 17, PARA, None),
+               ("Fark", 15, PARA, '=IF(OR(G{r}="",H{r}=""),"",H{r}-G{r})'),
+               ("Uygulanan Kurallar", 36, None, None)], toplamlar=(7, 8, 9))
+
     ws = wb.create_sheet("Yapılacaklar")
     baslik(ws, "TEKLİF ÖNCESİ YAPILACAKLAR", "Teklif verilmeden tamamlanacak işler.", 5)
     tablo(ws, [("Sıra", 6, None, None), ("İş", 56, None, None), ("Son Tarih", 14, "dd.mm.yyyy", None),
@@ -246,6 +256,15 @@ ORTAK_HARITA = [
     ("Riskler", "tablo:05-riskler.md", "Kaynak", "Kaynak"),
     ("Riskler", "tablo:05-riskler.md", "Seviye", "Seviye|Seviye (Düşük/Orta/Yüksek)"),
     ("Riskler", "tablo:05-riskler.md", "Önlem", "Önlem"),
+    ("Kişisel Hesap", "csv:kisisel-hesap.csv", "Sıra", "#sira"),
+    ("Kişisel Hesap", "csv:kisisel-hesap.csv", "Poz No", "poz_no"),
+    ("Kişisel Hesap", "csv:kisisel-hesap.csv", "Tanım", "tanim"),
+    ("Kişisel Hesap", "csv:kisisel-hesap.csv", "Birim", "birim"),
+    ("Kişisel Hesap", "csv:kisisel-hesap.csv", "Miktar", "miktar"),
+    ("Kişisel Hesap", "csv:kisisel-hesap.csv", "Birim Fiyat", "birim_fiyat"),
+    ("Kişisel Hesap", "csv:kisisel-hesap.csv", "Sistem Tutarı", "sistem_tutar"),
+    ("Kişisel Hesap", "csv:kisisel-hesap.csv", "Kişisel Tutar", "kisisel_tutar"),
+    ("Kişisel Hesap", "csv:kisisel-hesap.csv", "Uygulanan Kurallar", "uygulanan_kurallar"),
     ("Yapılacaklar", "csv:yapilacaklar.csv", "Sıra", "#sira"),
     ("Yapılacaklar", "csv:yapilacaklar.csv", "İş", "is"),
     ("Yapılacaklar", "csv:yapilacaklar.csv", "Son Tarih", "son_tarih"),
@@ -277,6 +296,8 @@ def birim_fiyat(cikti: Path):
         ("Cetvelde olmayan iş", f'=COUNTIF({K}!L{BAS}:L{SON},"Cetvelde yok")', "0"),
         ("Yüksek risk", f'=COUNTIF(Riskler!D{BAS}:D{SON},"Yüksek")', "0"),
         ("Eksik yeterlilik", f'=COUNTIF(Yeterlilik!D{BAS}:D{SON},"Eksik")', "0"),
+        ("Sistem tahmini (kişisel hesap)", "='Kişisel Hesap'!G3", PARA),
+        ("Sizin yönteminizle", "='Kişisel Hesap'!H3", PARA),
     ])
 
     ws = wb.create_sheet("BFTC Kıyas")
@@ -334,6 +355,8 @@ def anahtar_teslim(cikti: Path):
         ("Finansman yükü olan iş grubu", f'=COUNTIF(Pursantaj!F{BAS}:F{SON},"Finansman yükü*")', "0"),
         ("Yüksek risk", f'=COUNTIF(Riskler!D{BAS}:D{SON},"Yüksek")', "0"),
         ("Eksik yeterlilik", f'=COUNTIF(Yeterlilik!D{BAS}:D{SON},"Eksik")', "0"),
+        ("Sistem tahmini (kişisel hesap)", "='Kişisel Hesap'!G3", PARA),
+        ("Sizin yönteminizle", "='Kişisel Hesap'!H3", PARA),
     ])
 
     ws = wb.create_sheet("Mahal Listesi")

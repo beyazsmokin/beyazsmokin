@@ -8,7 +8,8 @@ hafızasını kuran, platformdan bağımsız bir skill.
 ```
 ihale-analiz/
 ├── SKILL.md                  # ana talimat (Claude skill formatı)
-├── agents/                   # ajan tanımları
+├── kurallar.md               # temel kurallar ve güven etiketleri
+├── agents/                   # ajan tanımları (tarayıcı dahil)
 ├── setup/
 │   ├── KURULUM.md            # ilk çalıştırma talimatı
 │   └── workspace-template/   # çalışma alanına kopyalanan dosyalar
@@ -23,6 +24,8 @@ ihale-analiz/
     ├── metraj_kiyas.py       # idare ve hesap metrajı kıyası
     ├── excel_rapor.py        # Excel raporunu şablona doldurur
     ├── sablon_olustur.py     # BFTC ve anahtar teslim şablonlarını üretir
+    ├── tara.py               # ihale listesini profile ve tercihlere göre skorlar
+    ├── kisisel_hesap.py      # kişisel hesap kurallarını sistem tahmininin yanına koyar
     └── vt.py                 # öğrenen veritabanı (SQLite)
 ```
 

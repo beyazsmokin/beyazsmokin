@@ -16,6 +16,7 @@ ve tek bir SQLite veritabanında tutulur.
 ```
 Masaüstü/İhale Analiz/            (özel simgeli klasör)
 ├── Gelen Dosyalar/               kullanıcı indirdiği ihale dosyalarını buraya bırakır
+├── Taramalar/                    günlük tarama listeleri ve skorları
 ├── İhaleler/
 │   └── <ihale-kodu>/             her ihale ve her inceleme kendi klasöründe
 │       ├── kaynak/               o ihalenin dokümanları ve çizimleri
@@ -50,17 +51,23 @@ yönetir. Alt ajan çalıştırabilen platformlarda her ajan ayrı çalıştır�
 
 | Adım | Ajan | Çıktı (`İhaleler/<ihale-kodu>/calisma/`) |
 |------|------|-------------------------------------------|
+| T | [tarayici](agents/tarayici.md) | `Taramalar/<tarih>.md` (kullanıcı "bugün ne çıktı" dediğinde ya da liste bıraktığında) |
 | 0 | koordinatör | ihale klasörü (`scripts/yeni_ihale.py`), veritabanından bağlam |
 | 1 | [dokuman-okuyucu](agents/dokuman-okuyucu.md) | `01-ozet.md` |
 | 2a | [idari-analist](agents/idari-analist.md) | `02-idari.md` |
 | 2b | [teknik-analist](agents/teknik-analist.md) | `03-teknik.md` |
-| 2c | [mali-analist](agents/mali-analist.md) | `04-mali.md` |
+| 2c | [mali-analist](agents/mali-analist.md) | `04-mali.md`, varsa `07-kisisel-hesap.md` |
 | 2d | [metraj-analist](agents/metraj-analist.md) | `06-metraj.md` ve CSV'ler |
 | 3 | [risk-denetci](agents/risk-denetci.md) | `05-riskler.md` |
 | 4 | [rapor-yazari](agents/rapor-yazari.md) | `<kod> Rapor.md`, `<kod> Analiz.xlsx` |
 | 5 | koordinatör | veritabanına ve hafızaya kayıt |
 
-2a, 2b, 2c ve 2d birbirinden bağımsızdır, paralel çalışabilir.
+2a, 2b, 2c ve 2d birbirinden bağımsızdır, paralel çalışabilir. Bir İKN
+yazıldığında koordinatör doğrudan 0. adımdan başlar; "analiz zincirini
+başlat" denirse 0-5 arası sormadan çalışır.
+
+Her ajan [kurallar.md](kurallar.md) dosyasındaki temel kurallara ve güven
+etiketlerine uyar.
 
 ## 3. Öğrenme döngüsü
 
@@ -83,6 +90,17 @@ fiyat ve pursantaj ortalamalarını kullanır.
 teklif): hemen `vt.py ders-ekle` ya da `vt.py sonuc` ile kaydet. Ders,
 düzeltilen ajanı etiketler ki aynı hata tekrarlanmasın.
 
+**Beğen / reddet:** kullanıcı bir ihale için "ilgimi çekti" ya da
+"ilgilenmiyorum" derse `vt.py tercih` ile kaydet. Tarayıcı skoru
+`vt.py tercih-ozet` eğilimlerinden beslenir; bir özellik en az 3 kararda
+görülmeden ağırlık almaz.
+
+**Kişisel hesap kuralları:** kullanıcı kendi hesap yöntemini söylerse
+("betona hep %15 fire eklerim", "nakliye her zaman %8") kuralı yapıya çevir,
+kullanıcıya okutup onayını al ve `vt.py kural-ekle` ile kaydet. İşlemler:
+`yuzde_ekle`, `yuzde_cikar`, `tutar_ekle`, `birim_fiyat`. Kurallar sistem
+tahminini değiştirmez; `scripts/kisisel_hesap.py` ikisini yan yana verir.
+
 Kod çalıştırılamayan platformlarda aynı bilgiler `.sistem/hafiza/`
 altındaki Markdown dosyalarına yazılır (`ogrenilenler.md`,
 `ihale-gecmisi.md`).
@@ -93,9 +111,10 @@ Rapor [templates/analiz-raporu.md](templates/analiz-raporu.md) şablonunu,
 Excel `scripts/excel_rapor.py` betiğiyle teklif türüne göre şablona yazılır:
 
 - **Birim fiyatlı (BFTC)** ihale: `birim-fiyat.xlsx` (Özet, BFTC Kıyas,
-  Yeterlilik, Teknik, Mali, Riskler, Yapılacaklar)
+  Yeterlilik, Teknik, Mali, Riskler, Kişisel Hesap, Yapılacaklar)
 - **Anahtar teslim / götürü bedel** ihale: `anahtar-teslim.xlsx` (Özet, Mahal
-  Listesi, Keşif, Pursantaj, Yeterlilik, Teknik, Mali, Riskler, Yapılacaklar)
+  Listesi, Keşif, Pursantaj, Yeterlilik, Teknik, Mali, Riskler, Kişisel Hesap,
+  Yapılacaklar)
 
 **Şablona sadık kal.** Excel çıktısı her zaman bu iki şablondan biridir.
 Sayfa, sütun, formül ya da biçim ekleme, silme, değiştirme; ajan çıktıları
@@ -108,4 +127,6 @@ Katılma), sonra iki dosyanın yolu verilir.
 
 - Rapor hukuki görüş değildir; bunu raporun sonunda belirt.
 - Dokümanda olmayan bir bilgiyi uydurma; "dokümanda bulunamadı" yaz.
+- Sayıları betikler hesaplar, etiketsiz sayı rapora girmez; ayrıntı
+  [kurallar.md](kurallar.md).
 - Kullanıcının firma bilgileri ve veritabanı çalışma alanı dışına gönderilmez.

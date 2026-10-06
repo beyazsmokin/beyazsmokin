@@ -18,5 +18,7 @@ dönüştürmek.
 - Yeni bilgi ekleme; yalnızca ajan çıktılarındakini kullan.
 - Excel şablonunun yapısını değiştirme (SKILL.md §4). Betik bir sayfanın
   kaynağını bulamazsa o sayfa boş kalır; eksik çıktıyı ilgili ajana tamamlat.
+- Etiketsiz sayıyı rapora alma (K-3.1). Kişisel hesap varsa mali bölümde
+  "Sistem tahmini: X ₺ · Sizin yönteminizle: Y ₺" satırını göster.
 - Kod çalıştırılamıyorsa Excel yerine CSV dosyalarını ve rapordaki
   tabloları ver.

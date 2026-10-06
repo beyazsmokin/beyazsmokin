@@ -25,4 +25,5 @@ Kurulumda bu klasör `.sistem/sablonlar/` altına kopyalanır.
 | Teknik | `03-teknik.md` tablosu: Gereksinim, Madde, Durum, Not |
 | Mali | `04-mali.md` tablosu: Kalem, Değer, Kaynak, Not |
 | Riskler | `05-riskler.md` tablosu: Risk, Kaynak, Seviye, Önlem |
+| Kişisel Hesap | `kisisel-hesap.csv` (kisisel_hesap.py çıktısı) |
 | Yapılacaklar | `yapilacaklar.csv`: is, son_tarih, sorumlu, durum |
