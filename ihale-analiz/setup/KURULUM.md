@@ -1,21 +1,33 @@
 # İlk Çalıştırma Kurulumu
 
-Bu talimat yalnızca çalışma alanında `config.yaml` bulunmadığında uygulanır.
+Bu talimat yalnızca `İhale Analiz/.sistem/config.yaml` bulunmadığında uygulanır.
 
-## Kod çalıştırabilen platformlar
+## Kullanıcının bilgisayarında kod çalıştırabilen platformlar
 
 ```bash
-python3 scripts/init_workspace.py            # varsayılan: ~/ihale-analiz-calisma
-python3 scripts/init_workspace.py /baska/yol # özel konum
+python scripts/init_workspace.py              # varsayılan: Masaüstü/İhale Analiz
+python scripts/init_workspace.py "D:/Baska"   # özel konum
 ```
 
-Betik `setup/workspace-template/` içeriğini hedefe kopyalar, mevcut
-dosyaların üzerine yazmaz.
+Windows'ta skill klasöründeki `kur.bat` dosyasına çift tıklamak aynı işi yapar.
 
-## Kod çalıştıramayan ama dosya yazabilen platformlar
+Betik:
+- Masaüstünde `İhale Analiz` klasörünü açar, `Gelen Dosyalar` ve `İhaleler`
+  alt klasörlerini kurar.
+- Ayarları, hafızayı, veritabanını, Excel şablonlarını ve skill'in bir
+  kopyasını gizli `.sistem` klasörüne koyar (Windows: gizli + sistem
+  özniteliği, macOS: gizli bayrağı, Linux: nokta ile başlayan ad).
+- Klasöre `assets/ikon` simgesini atar (Windows `desktop.ini`, macOS
+  NSWorkspace, Linux GNOME `gio`). Simge görünmezse masaüstünü yenilemek
+  (F5) yeterlidir.
+- Mevcut dosyaların üzerine yazmaz.
 
-`setup/workspace-template/` altındaki her dosyayı aynı göreli yolla
-çalışma alanına elle oluştur.
+## Bilgisayara erişimi olmayan, kum havuzunda çalışan platformlar
+
+Kurulumu kullanıcıya bırak: `kur.bat` (Windows) ya da
+`python scripts/init_workspace.py` komutunu kendi bilgisayarında bir kez
+çalıştırmasını söyle. Sonra çalışma alanını platforma klasör olarak bağlaması
+yeterlidir.
 
 ## Dosya sistemi olmayan platformlar
 
@@ -24,7 +36,8 @@ Kullanıcıya hafızanın sohbette tutulacağını söyle, `firma-profili.md`
 
 ## Kurulumdan sonra
 
-1. Kullanıcıya firma profili sorularını sor (`hafiza/firma-profili.md`).
+1. Kullanıcıya firma profili sorularını sor (`.sistem/hafiza/firma-profili.md`).
    Cevap vermek istemediği alanları boş bırak.
-2. `config.yaml` içinde `kurulum_tarihi` ve `platform` alanlarını doldur.
-3. Kullanıcıya kurulumun bittiğini ve çalışma alanının yolunu söyle.
+2. `.sistem/config.yaml` içinde `platform` alanını doldur.
+3. Kullanıcıya klasörün yerini ve ihale dosyalarını `Gelen Dosyalar`
+   klasörüne bırakmasını söyle.

@@ -4,7 +4,7 @@
 derecelendirmek.
 
 **Girdi:** `01-ozet.md`, `02-idari.md`, `03-teknik.md`, `04-mali.md`, `06-metraj.md`,
-`hafiza/ogrenilenler.md`, `hafiza/ihale-gecmisi.md`.
+`.sistem/hafiza/ogrenilenler.md`, `vt.py baglam --ajan risk-denetci` çıktısı.
 
 **Çıktı:** `05-riskler.md`
 

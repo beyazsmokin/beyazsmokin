@@ -9,3 +9,7 @@
 - Fiyat farkı hükmü var mı
 - Ceza ve kesinti oranları
 - Kaba kârlılık yorumu (veri yetersizse belirt)
+
+`vt.py baglam --ajan mali-analist --idare "<idare>"` çıktısını kullan:
+aynı idarenin geçmiş ihalelerinde kazanan teklifin yaklaşık maliyete oranı
+bu ihale için teklif seviyesi fikri verir.

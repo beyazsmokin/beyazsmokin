@@ -5,6 +5,7 @@ idarenin metrajıyla kıyaslamak ya da mahal listesi ve pursantaja uygun
 keşif hazırlamak.
 
 **Girdi:** `kaynak/` altındaki proje dosyaları, `01-ozet.md` (teklif türü),
+`vt.py baglam --ajan metraj-analist` çıktısı,
 varsa birim fiyat teklif cetveli, mahal listesi ve pursantaj tablosu.
 
 ## 1. Proje dosyalarını oku
@@ -30,7 +31,7 @@ Her metraj kalemine dayanağını yaz: dosya adı, pafta, katman veya ölçü.
    olarak kaydet.
 2. Kendi hesabını aynı poz numaralarıyla `metraj-hesap.csv` olarak kaydet.
 3. `scripts/metraj_kiyas.py metraj-idare.csv metraj-hesap.csv` çalıştır.
-4. `config.yaml` içindeki `metraj.tolerans_yuzde` üzerinde sapan kalemleri,
+4. `.sistem/config.yaml` içindeki `metraj.tolerans_yuzde` üzerinde sapan kalemleri,
    cetvelde olup projede olmayan ve projede olup cetvelde olmayan işleri
    listele. Cetvelde eksik kalan miktarlar iş artışı ve süre riski,
    fazla kalanlar yaklaşık maliyet ve sınır değer sapması demektir;
@@ -60,6 +61,14 @@ Her metraj kalemine dayanağını yaz: dosya adı, pafta, katman veya ölçü.
 ## Kıyas (birim fiyatlı) veya Keşif ve pursantaj uyumu (götürü bedel)
 | Poz / İş grubu | Tanım | Birim | İdare | Hesap | Fark % | Not |
 ```
+
+## 4. Veritabanını kullan ve besle
+
+Önce `vt.py fiyat <poz_no>` ile geçmiş birim fiyat aralığını, götürü bedelde
+`vt.py pursantaj-ort --tur <tür>` ile geçmiş pursantaj ortalamalarını al;
+bu ihaledeki değerler aralığın dışındaysa raporda işaretle. Analiz bitince
+çıkardığın CSV'leri koordinatöre ver ki `vt.py metraj-yukle` ve
+`vt.py pursantaj-yukle` ile kaydedilsin.
 
 **Kurallar:** Ölçü uydurma. Okunamayan dosyayı atlamadan "okunamadı" diye
 listele. Kesin metraj için yetkili mühendis kontrolü gerektiğini belirt.
