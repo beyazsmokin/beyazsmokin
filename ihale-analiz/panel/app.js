@@ -265,7 +265,7 @@ async function ihaleler(kap, sorgu) {
           <td class="gizle-mobil">${e(r.idare || "—")}</td><td><b>${e(r.ad)}</b></td><td class="gizle-mobil">${e(r.il || "")}</td>
           <td class="gizle-mobil">${e(r.benzer_is || "")}</td><td class="nowrap">${kalanHucre(r.ihale_tarihi)}</td>
           <td class="nowrap">${takipKodu(r.ikn) ? '<span class="rozet-d d-takipte">Takipte</span>' : `<button class="dugme kucuk" data-ilan-al="${i}">Takibe ekle</button>`}
-            <button class="dugme kucuk" data-ilan-indir="${i}" title="EKAP ihale dosyasını indir">Dosya</button></td></tr>`).join("")}
+            ${/DT/.test(r.ikn || "") ? "" : `<button class="dugme kucuk" data-ilan-indir="${i}" title="EKAP ihale dosyasını indir">Dosya</button>`}</td></tr>`).join("")}
         </tbody></table></div>`;
     } else if (l.length) {
       tablo = `<div class="tablo-kap"><table class="tablo site-tablo"><thead><tr>
@@ -326,7 +326,7 @@ async function ihaleler(kap, sorgu) {
   const takibeAl = async (r) => {
     const s = await api("ihaleler", { method: "POST", govde: { kod: r.ikn, ad: r.ad, idare: r.idare, il: r.il,
       ihale_tarihi: r.ihale_tarihi, kaynak_url: r.kaynak_url, notlar: r.notlar, analiz: true } });
-    bildir(`${r.ad} takibe alındı; ön inceleme kuyruğa alındı.${s.site || ""}`);
+    bildir(`${r.ad} takibe alındı; ön inceleme başladı.${s.site || ""}`);
     liste = await api("ihaleler");
     return s.kod;
   };
@@ -352,7 +352,7 @@ async function ihaleler(kap, sorgu) {
         ${satir("Teminat", e(r.teminat))}${satir("İtiraz bedeli", r.itiraz_bedeli ? e(r.itiraz_bedeli) + " ₺" : "")}${satir("İlan tarihi", e(r.ilan_tarihi))}</dl>
       <div class="dugmeler">
         ${kod ? `<a class="dugme" href="#/ihale/${kodUrl(kod)}">Takipte · aç</a>` : '<button class="dugme ana-d" value="al" data-p="al">Takibe ekle</button>'}
-        <button class="dugme" value="indir" data-p="indir">EKAP dosyasını indir</button>
+        ${/DT/.test(r.ikn || "") ? "" : '<button class="dugme" value="indir" data-p="indir">EKAP dosyasını indir</button>'}
         <a class="dugme" href="${e(r.kaynak_url)}" target="_blank" rel="noopener">Sitede aç</a>
         <button class="dugme" value="kapat">Kapat</button></div></form>`;
     pen.showModal();
@@ -483,7 +483,7 @@ function ihaleFormu(t = null, onEk = {}) {
 
 // EKAP doküman sayfasındaki güvenlik kodu resmini gösterir; kodu kullanıcı yazar.
 async function ihaleDosyasiIndir(kod) {
-  bildir("EKAP'ın doküman sayfası ayrı bir pencerede açılıyor. Güvenlik kodu burada sorulacak.");
+  bildir("İhale dosyası hazırlanıyor. EKAP güvenlik kodu birazdan burada sorulacak.");
   let bitti = false;
   const istek = api("site/dosya", { method: "POST", govde: { kod } }).finally(() => { bitti = true; });
   (async () => {
@@ -545,8 +545,8 @@ async function ihaleDetay(kap, sorgu) {
     <div class="meta"><span>${e(t.kod)}</span>${t.idare ? `<span>${e(t.idare)}</span>` : ""}${t.il ? `<span>${e(t.il)}</span>` : ""}
     <span>${durumRozet(t.durum)}</span>${t.ihale_tarihi ? `<span>İhale: <b>${tarihYaz(t.ihale_tarihi)}</b> ${kapali ? "" : kalanYaz(t.ihale_tarihi)}</span>` : ""}</div></div>
     <div class="dugmeler">
-      ${kapali ? "" : `<button class="dugme ana-d" data-eylem="analiz" ${surecte ? "disabled" : ""}>${surecte ? "Analiz sürüyor" : md ? "Yeniden analiz et" : "Analizi başlat"}</button>`}
-      <button class="dugme" data-eylem="dosya-indir">İhale dosyasını indir</button>
+      ${kapali ? "" : `<button class="dugme ana-d" data-eylem="analiz" ${surecte ? "disabled" : ""}>${surecte ? "Analiz sürüyor" : v.dosyalar.kaynak.length ? (md ? "Yeniden analiz et" : "Detaylı analizi başlat") : "Ön incelemeyi başlat"}</button>`}
+      ${/DT/.test(t.ikn || t.kod) ? "" : '<button class="dugme" data-eylem="dosya-indir">İhale dosyasını indir</button>'}
       <button class="dugme" data-eylem="duzenle">Düzenle</button>
       <button class="dugme" data-eylem="klasor">Klasörü aç</button>
       <button class="dugme tehlike" data-eylem="sil">Takipten çıkar</button>
@@ -656,7 +656,8 @@ async function ihaleDetay(kap, sorgu) {
     if (!ey) return;
     try {
       if (ey === "analiz") {
-        const r = await api(`ihaleler/${kodUrl(kod)}/analiz`, { method: "POST" });
+        // ihale dosyası varsa detaylı analiz, yoksa ön inceleme; detay dosyasızsa sunucu 409 ile açıklar
+        const r = await api(`ihaleler/${kodUrl(kod)}/analiz`, { method: "POST", govde: { tur: v.dosyalar.kaynak.length ? "detay" : "on" } });
         bildir(r.mesaj);
         S.detaySekme = "surec";
         yonlendir();
@@ -717,9 +718,8 @@ function surecCiz(y, s, durum) {
       <div><b>${e(a.ad)}</b><small>${e(a.ajan)} · ${etiket[a.durum]}${a.zaman ? " · " + e(zamanYaz(a.zaman)) : ""}</small>
       ${a.mesaj ? `<div class="mesaj">${e(a.mesaj)}</div>` : ""}</div></li>`).join("")}</ol></div>
     <div class="izgara" style="align-content:start">
-    ${durum === "hesaplanacak" ? `<div class="kart"><h2>Kuyrukta</h2><p class="not">İhale analiz kuyruğunda. Yapay zekâ asistanınıza şunu yazın:</p>
-      <div class="kopya"><span>Kuyruktaki ihaleleri analiz et</span><button class="dugme kucuk" data-kopya="Kuyruktaki ihaleleri analiz et">Kopyala</button></div>
-      <p class="not">Otomatik başlatmak için config.yaml içinde <code>panel.analiz_komutu</code> tanımlanabilir (Ayarlar).</p></div>` : ""}
+    ${durum === "hesaplanacak" && S.motor && !S.motor.yz ? `<div class="kart"><h2>Kuyrukta</h2><p class="not">Yapay zekâ bağlantısı yok${S.motor.neden ? ` (${e(S.motor.neden)})` : ""}; asistanınıza şunu yazın:</p>
+      <div class="kopya"><span>Kuyruktaki ihaleleri analiz et</span><button class="dugme kucuk" data-kopya="Kuyruktaki ihaleleri analiz et">Kopyala</button></div></div>` : ""}
     <div class="kart"><h2>Günlük</h2>${s.gunluk.length ? `<div class="gunluk">${s.gunluk.slice().reverse().map((g) => `${e(zamanYaz(g.zaman))} · ${e(g.adim)} · ${e(g.durum)}${g.mesaj ? " · " + e(g.mesaj) : ""}`).join("<br>")}</div>` : '<p class="not">Ajanlar adım başlatıp bitirdikçe kayıtlar burada görünür.</p>'}</div>
     </div></div>`;
 }
@@ -1005,6 +1005,7 @@ async function bekleyeniGoster() {
 setInterval(() => { if (!document.hidden) bekleyeniGoster(); }, 2000);
 window.addEventListener("focus", bekleyeniGoster);
 
+api("motor").then((m) => { S.motor = m; }).catch(() => {});
 temaUygula(localStorageAl("tema") || "");
 window.addEventListener("hashchange", yonlendir);
 document.addEventListener("visibilitychange", () => {

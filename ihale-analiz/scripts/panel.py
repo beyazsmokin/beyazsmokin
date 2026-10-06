@@ -371,7 +371,7 @@ class Uygulama:
             self.indirme_durum = m
         try:
             inen = takip_sitesi.indir(t["ikn"] or t["kod"], hedef, self._kod_iste, self.alan / ".sistem",
-                                      bildir=bildir)
+                                      bildir=bildir, kaynak_url=t["kaynak_url"])
         finally:
             self.indirme_durum = ""
         return {"dosyalar": [f.name for f in inen],
