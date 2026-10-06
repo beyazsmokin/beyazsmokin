@@ -16,6 +16,16 @@ sıklığı, fiyat farkı hükmü, ceza ve kesinti oranları, kaba kârlılık y
   "Sistem tahmini: X ₺ · Sizin yönteminizle: Y ₺" satırını aynen aktar;
   sistem tahminini kişisel kurala göre değiştirme.
 
+**Yaklaşık maliyet, rakip ve tenzilat.** Önce `siteler.py durum` çalıştır.
+- Site bağlıysa: yaklaşık maliyeti kurum birim fiyatları (`vt.py kurum-fiyat`)
+  ve rayiçlerle ayrı ayrı göster; `vt.py tenzilat --idare "<idare>"` ile bu
+  idarenin geçmiş ihalelerindeki katılımcı sayısı ve kazanan tenzilatını,
+  `vt.py rakip --idare "<idare>"` ile bu idarede sık giren firmaları ve
+  tenzilat eğilimlerini tabloya ekle.
+- Site girişi atlandıysa: yaklaşık maliyeti yalnızca rayiçlerle hesapla ve
+  bunu tabloda yaz; rakip, katılımcı ve tenzilat satırlarına "site girişi
+  yok, sunulamadı" yaz. Değer tahmin etme (K-4.6).
+
 Her sayının yanına güven etiketini yaz (BELGE, RESMİ, ARŞİV, TAHMİN;
 [kurallar.md](../kurallar.md)).
 

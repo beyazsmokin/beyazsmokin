@@ -10,3 +10,7 @@
    kullanıcı her oturumun başında `.sistem` klasörünü (özellikle
    `veritabani/ihale.db`) zip olarak yükler, sonunda güncel halini indirir.
    Asıl klasör kullanıcının masaüstündedir; ChatGPT onun kopyasıyla çalışır.
+4. İhale sitesi girişi ChatGPT'de yapılmaz ve şifre sohbette istenmez.
+   Kullanıcı siteye girişi kendi bilgisayarında `siteler.py panel` ile kurar
+   ya da siteden indirdiği sonuç listelerini yükler; yüklemezse rakip,
+   katılımcı, tenzilat ve kurum birim fiyatı bölümleri raporda yer almaz.

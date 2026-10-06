@@ -20,5 +20,8 @@ dönüştürmek.
   kaynağını bulamazsa o sayfa boş kalır; eksik çıktıyı ilgili ajana tamamlat.
 - Etiketsiz sayıyı rapora alma (K-3.1). Kişisel hesap varsa mali bölümde
   "Sistem tahmini: X ₺ · Sizin yönteminizle: Y ₺" satırını göster.
+- "Piyasa ve rakip analizi" bölümünü `04-mali.md` içindeki site verisinden
+  doldur. Site girişi yoksa bölümü silme; şablondaki "site girişi yok"
+  metnini yaz ki kullanıcı neyin eksik kaldığını görsün.
 - Kod çalıştırılamıyorsa Excel yerine CSV dosyalarını ve rapordaki
   tabloları ver.

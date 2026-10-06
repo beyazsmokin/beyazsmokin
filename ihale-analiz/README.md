@@ -25,6 +25,7 @@ ihale-analiz/
     ├── metraj_kiyas.py       # idare ve hesap metrajı kıyası
     ├── excel_rapor.py        # Excel raporunu şablona doldurur
     ├── sablon_olustur.py     # BFTC ve anahtar teslim şablonlarını üretir
+    ├── siteler.py            # ihale sitesi giriş paneli, şifre kasası, oturum
     ├── tara.py               # ihale listesini profile ve tercihlere göre skorlar
     ├── kisisel_hesap.py      # kişisel hesap kurallarını sistem tahmininin yanına koyar
     └── vt.py                 # öğrenen veritabanı (SQLite)
@@ -37,15 +38,22 @@ ihale-analiz/
 - **ChatGPT:** [platforms/chatgpt.md](platforms/chatgpt.md)
 - **Hermes ve diğerleri:** [platforms/hermes.md](platforms/hermes.md)
 
-Gerekli: `pip install openpyxl` (Excel). Metraj için isteğe bağlı:
-`pip install ezdxf pdfplumber pillow`.
+Gerekli: `pip install openpyxl keyring` (Excel, şifre kasası). Metraj için
+isteğe bağlı: `pip install ezdxf pdfplumber pillow`. İhale sitesinde oturum
+açıp sayfa çekmek için isteğe bağlı: `pip install playwright` ve
+`python -m playwright install chromium`.
 DWG okumak için ücretsiz ODA File Converter ya da LibreDWG (`dwg2dxf`)
 gerekir; kurulum betiği yoksa nedenini anlatır ve indirme sayfasını önerir
 (`python scripts/dwg_cevirici.py` ile her zaman kontrol edilebilir).
 
 İlk kullanımda skill masaüstünde özel simgeli **İhale Analiz** klasörünü
 kurar, sistem dosyalarını gizli `.sistem` klasörüne koyar ve firma profilini
-sorar. İhale dosyaları `Gelen Dosyalar` klasörüne bırakılır; her ihale
+sorar. Kurulum sırasında tarayıcıda bir giriş paneli açılır: kullanıcı
+ihaleleri takip ettiği siteye (EKAP, ihalebul.com ya da başka bir site)
+kullanıcı adı ve şifresiyle bağlanır ya da bu adımı atlar. Şifre işletim
+sisteminin şifre kasasında tutulur, hiçbir dosyaya yazılmaz. Atlanırsa raporda
+kurum birim fiyatı, rakip, katılımcı ve tenzilat analizi yer almaz; yaklaşık
+maliyet yalnızca rayiçlerle hesaplanır. İhale dosyaları `Gelen Dosyalar` klasörüne bırakılır; her ihale
 `İhaleler/<kod>/` altında kendi klasörüne alınır, çıktılar oraya yazılır.
 
 ## Durum

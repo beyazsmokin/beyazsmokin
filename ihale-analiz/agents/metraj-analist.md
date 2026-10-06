@@ -100,7 +100,9 @@ miktarları ve pursantaj payları ondan hesaplanır. Dosyalar `calisma/` altına
 
 ## 4. Veritabanını kullan ve besle
 
-Önce `vt.py fiyat <poz_no>` ile geçmiş birim fiyat aralığını, götürü bedelde
+Önce `vt.py fiyat <poz_no>` ile geçmiş birim fiyat aralığını, site girişi
+varsa `vt.py kurum-fiyat <poz_no> [--idare "<idare>"]` ile kurumların geçmiş
+ihalelerdeki birim fiyatlarını (ARŞİV, kaynak site adıyla), götürü bedelde
 `vt.py pursantaj-ort --tur <tür>` ile geçmiş pursantaj ortalamalarını al;
 bu ihaledeki değerler aralığın dışındaysa raporda işaretle. Analiz bitince
 çıkardığın CSV'leri koordinatöre ver ki `vt.py metraj-yukle` (`metraj.csv`

@@ -25,6 +25,8 @@ Masaüstü/İhale Analiz/            (özel simgeli klasör)
 │       └── <ihale-kodu> Analiz.xlsx
 └── .sistem/                      GİZLİ: kullanıcı dokunmaz
     ├── config.yaml
+    ├── siteler.json              ihale sitesi kayıtları (şifre YOK, şifre işletim sistemi kasasında)
+    ├── oturumlar/<site>/         sitelerin tarayıcı oturumu (çerezler)
     ├── hafiza/                   firma profili, öğrenilenler, ihale geçmişi
     ├── veritabani/ihale.db       öğrenen veritabanı
     ├── sablonlar/                Excel şablonları
@@ -42,6 +44,18 @@ Her çalıştırmada ilk adım:
    önerme; kullanıcı yalnızca `Gelen Dosyalar` ve `İhaleler` ile çalışır.
 5. Dosya sistemi olmayan platformlarda hafıza sohbette tutulur
    (bkz. KURULUM.md).
+
+### İhale sitesi girişi
+
+Kurulumda tarayıcıda bir giriş paneli açılır (`scripts/siteler.py panel`).
+Kullanıcı ihaleleri takip ettiği siteyi (EKAP, ihalebul.com ya da başka
+bir site) kullanıcı adı ve şifresiyle ekler ya da atlar. Bu giriş hızlı
+ihale analizi, geçmiş ihalelerden kurum birim fiyatı tespiti, rakip,
+katılımcı ve tenzilat analizi için kullanılır. Atlanırsa bu bölümler
+raporda yer almaz ve yaklaşık maliyet yalnızca rayiçlerle hesaplanır;
+kullanıcıya bunu açıkça söyle. Şifre yalnızca işletim sisteminin şifre
+kasasında durur; sohbette isteme, dosyaya ya da hafızaya yazma (K-10.1).
+Ayrıntı: [setup/KURULUM.md](setup/KURULUM.md) adım 4.
 
 ## 2. İş akışı
 
@@ -85,6 +99,12 @@ fiyat ve pursantaj ortalamalarını kullanır.
 - `vt.py metraj-yukle` ve `vt.py pursantaj-yukle` (varsa CSV'ler)
 - Analizde ortaya çıkan, sonraki ihalelerde işe yarayacak her bilgi için
   `vt.py ders-ekle` (hangi ajanı ilgilendiriyorsa `--ajan` ile)
+
+**İhale sitesinden gelen veri** (site bağlıysa): katılımcılar ve teklifleri
+`vt.py katilimci-yukle`, kurum birim fiyatları `vt.py kurum-fiyat-yukle
+--kaynak <site>` ile kaydedilir. `vt.py kurum-fiyat`, `vt.py tenzilat` ve
+`vt.py rakip` bu veriden birim fiyat geçmişi, tenzilat ve rakip eğilimi
+çıkarır; `vt.py baglam --idare` aynı idarenin geçmiş tenzilatını gösterir.
 
 **Kullanıcı geri bildirim verdiğinde** (düzeltme, ihale sonucu, kazanan
 teklif): hemen `vt.py ders-ekle` ya da `vt.py sonuc` ile kaydet. Ders,
@@ -134,3 +154,4 @@ Katılma), sonra iki dosyanın yolu verilir.
 - Sayıları betikler hesaplar, etiketsiz sayı rapora girmez; ayrıntı
   [kurallar.md](kurallar.md).
 - Kullanıcının firma bilgileri ve veritabanı çalışma alanı dışına gönderilmez.
+- İhale sitesi şifresi sohbette istenmez, hiçbir dosyaya yazılmaz.

@@ -11,7 +11,7 @@ numaraları oradaki gibidir.
 | K-3.5 | Kaynak veri tahminle düzeltilmez. Şüpheli değer işaretlenir; silinmez, değiştirilmez. |
 | K-9.2 | Çelişen veri varsa kullanıcıya sorulur, ajan kendisi seçmez. |
 | K-5.10 | CAPTCHA ve robot kontrolleri asla otomatik aşılmaz. Takılınca dur, kullanıcıdan dosyayı indirip `Gelen Dosyalar`'a bırakmasını iste. |
-| K-10.1 | API anahtarı ve şifre hafıza dosyalarına, veritabanına, loglara ve paketlere yazılmaz. |
+| K-10.1 | API anahtarı ve şifre hafıza dosyalarına, veritabanına, loglara ve paketlere yazılmaz. İhale sitesi şifreleri yalnızca işletim sisteminin şifre kasasında durur (`siteler.py`); sohbette istenmez, ekrana yazdırılmaz. |
 | K-12.4 | Sabit dosya yolu yoktur. Yollar çalışma alanına göredir. |
 
 ## Güven etiketleri
@@ -20,7 +20,7 @@ numaraları oradaki gibidir.
 |--------|----------|
 | BELGE | Değer bu ihalenin kendi dokümanından ya da projesinden ölçülerek alındı. |
 | RESMİ | Değer resmi bir kaynaktan geldi (Bakanlık birim fiyatı, TÜİK endeksi, mevzuat). |
-| ARŞİV | Değer veritabanındaki geçmiş ihalelerden geldi (`vt.py fiyat`, `pursantaj-ort`). |
+| ARŞİV | Değer veritabanındaki geçmiş ihalelerden geldi (`vt.py fiyat`, `pursantaj-ort`, ihale sitesinden alınan `kurum-fiyat`, `tenzilat`, `rakip`; kaynak site adıyla). |
 | TAHMİN | Değer görselden okundu, varsayımla hesaplandı ya da kullanıcının kişisel kuralıyla üretildi. |
 
 Geçmişten öğrenilen bir değer (ARŞİV, TAHMİN) BELGE değerinin yerine asla

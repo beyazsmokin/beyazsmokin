@@ -19,6 +19,15 @@ Kullanım (veritabanı yolu varsayılan: <çalışma alanı>/.sistem/veritabani/
   vt.py kural-ekle --ad "Beton firesi" --kapsam beton --islem yuzde_ekle --deger 15 --cumle "betona %15 fire eklerim"
   vt.py kural-listele
   vt.py kural-kapat --id 3
+
+İhale sitesinden gelen veri (siteler.py ile giriş yapıldıysa):
+  vt.py katilimci-yukle --kod K --idare I --yaklasik 1500000 [--tarih T] [--kaynak ekap] dosya.csv
+                                                # firma,teklif[,durum]  durum: kazanan|gecerli|asiri_dusuk|elendi
+  vt.py kurum-fiyat-yukle --idare I [--kod K] [--tarih T] [--kaynak ekap] dosya.csv
+                                                # poz_no,tanim,birim,birim_fiyat
+  vt.py kurum-fiyat 15.150.1001 [--idare I]     # kurumların geçmiş birim fiyatları
+  vt.py tenzilat [--idare I] [--tur T]          # kazanan ve ortalama tenzilat, katılımcı sayısı
+  vt.py rakip [--firma F] [--idare I]           # firmaların katılım, kazanma, tenzilat eğilimi
 """
 import argparse
 import csv
@@ -52,6 +61,16 @@ CREATE TABLE IF NOT EXISTS hesap_kurallari (
   id INTEGER PRIMARY KEY AUTOINCREMENT, tarih TEXT, ad TEXT, kapsam TEXT, islem TEXT,
   deger REAL, kaynak_cumle TEXT, aktif INTEGER DEFAULT 1
 );
+CREATE TABLE IF NOT EXISTS katilimcilar (
+  ihale_kod TEXT, idare TEXT, tarih TEXT, yaklasik_maliyet REAL, firma TEXT, teklif REAL,
+  durum TEXT, kaynak TEXT, kayit_tarihi TEXT
+);
+CREATE TABLE IF NOT EXISTS kurum_fiyatlari (
+  idare TEXT, ihale_kod TEXT, tarih TEXT, poz_no TEXT, tanim TEXT, birim TEXT,
+  birim_fiyat REAL, kaynak TEXT, kayit_tarihi TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_katilimci_firma ON katilimcilar(firma);
+CREATE INDEX IF NOT EXISTS ix_kurum_fiyat_poz ON kurum_fiyatlari(poz_no);
 CREATE INDEX IF NOT EXISTS ix_metraj_poz ON metraj(poz_no);
 CREATE INDEX IF NOT EXISTS ix_ihale_idare ON ihaleler(idare);
 """
@@ -192,6 +211,16 @@ def cmd_baglam(con, a):
     if not benzer:
         print("- Henüz kayıt yok")
 
+    if a.idare:
+        tz = tenzilat_satirlari(con, a.idare)
+        print("\n## Bu idarenin geçmiş ihaleleri (site verisi)")
+        for r in tz[:10]:
+            kt = yuzde(r["kazanan"], r["ym"])
+            print(f"- {r['tarih']} {r['ihale_kod']}: {r['n']} katılımcı, kazanan tenzilat "
+                  f"{'-' if kt is None else f'%{kt:.2f}'}")
+        if not tz:
+            print("- Site verisi yok; rakip, katılımcı ve tenzilat analizi sunulamaz")
+
     ozet = con.execute(
         "SELECT COUNT(*) n, SUM(sonuc='kazanildi') k FROM ihaleler").fetchone()
     print(f"\n## Genel\n- Toplam analiz: {ozet['n']}, kazanılan: {ozet['k'] or 0}")
@@ -214,6 +243,90 @@ def cmd_ara(con, a):
         print(f"poz: {r['poz_no']} | {r['tanim']}")
     for r in con.execute("SELECT tarih, metin FROM dersler WHERE metin LIKE ? OR etiket LIKE ?", (q, q)):
         print(f"ders: {r['tarih']} | {r['metin']}")
+
+
+def cmd_katilimci_yukle(con, a):
+    con.execute("DELETE FROM katilimcilar WHERE ihale_kod=?", (a.kod,))
+    rows = read_csv(a.dosya)
+    con.executemany(
+        "INSERT INTO katilimcilar VALUES (?,?,?,?,?,?,?,?,?)",
+        [(a.kod, a.idare, a.tarih or today(), num(a.yaklasik), r["firma"].strip(), num(r.get("teklif")),
+          (r.get("durum") or "gecerli").strip(), a.kaynak, today()) for r in rows])
+    print(f"{len(rows)} katılımcı kaydedildi")
+
+
+def cmd_kurum_fiyat_yukle(con, a):
+    rows = read_csv(a.dosya)
+    if a.kod:
+        con.execute("DELETE FROM kurum_fiyatlari WHERE ihale_kod=? AND idare=?", (a.kod, a.idare))
+    con.executemany(
+        "INSERT INTO kurum_fiyatlari VALUES (?,?,?,?,?,?,?,?,?)",
+        [(a.idare, a.kod, a.tarih or today(), r["poz_no"].strip(), r.get("tanim"), r.get("birim"),
+          num(r.get("birim_fiyat")), a.kaynak, today()) for r in rows])
+    print(f"{len(rows)} kurum birim fiyatı kaydedildi")
+
+
+def cmd_kurum_fiyat(con, a):
+    rows = con.execute(
+        """SELECT idare, COUNT(*) n, MIN(birim_fiyat) mn, AVG(birim_fiyat) ort, MAX(birim_fiyat) mx,
+                  MAX(tarih) son, MAX(tanim) tanim, MAX(birim) birim
+           FROM kurum_fiyatlari WHERE poz_no=? AND birim_fiyat IS NOT NULL
+             AND (? IS NULL OR idare LIKE ?) GROUP BY idare ORDER BY son DESC""",
+        (a.poz, a.idare, f"%{a.idare}%" if a.idare else None)).fetchall()
+    if not rows:
+        print(f"{a.poz}: kurum birim fiyatı yok (site girişi yoksa yalnızca rayiç kullanılır)")
+    for r in rows:
+        print(f"{a.poz} {r['tanim']} ({r['birim']}) | {r['idare']}: {r['n']} kayıt, en düşük {r['mn']:.2f}, "
+              f"ortalama {r['ort']:.2f}, en yüksek {r['mx']:.2f}, son {r['son']}")
+
+
+def tenzilat_satirlari(con, idare=None, tur=None):
+    """Her ihale için katılımcı sayısı, kazanan ve ortalama tenzilat (%)."""
+    return con.execute(
+        """SELECT k.ihale_kod, MAX(k.idare) idare, MAX(k.tarih) tarih, MAX(k.yaklasik_maliyet) ym,
+                  COUNT(*) n,
+                  MAX(CASE WHEN k.durum='kazanan' THEN k.teklif END) kazanan,
+                  AVG(k.teklif) ort_teklif
+           FROM katilimcilar k LEFT JOIN ihaleler i ON i.kod = k.ihale_kod
+           WHERE k.teklif IS NOT NULL AND (? IS NULL OR k.idare LIKE ?) AND (? IS NULL OR i.tur = ?)
+           GROUP BY k.ihale_kod HAVING ym > 0 ORDER BY tarih DESC""",
+        (idare, f"%{idare}%" if idare else None, tur, tur)).fetchall()
+
+
+def yuzde(teklif, ym):
+    return None if teklif is None or not ym else (1 - teklif / ym) * 100
+
+
+def cmd_tenzilat(con, a):
+    rows = tenzilat_satirlari(con, a.idare, a.tur)
+    if not rows:
+        print("Tenzilat verisi yok (site girişi yapılmadıysa bu analiz sunulamaz)")
+        return
+    for r in rows:
+        kt = yuzde(r["kazanan"], r["ym"])
+        print(f"- {r['tarih']} {r['ihale_kod']} | {r['idare']} | {r['n']} katılımcı | "
+              f"kazanan tenzilat: {'-' if kt is None else f'%{kt:.2f}'} | "
+              f"ortalama tenzilat: %{yuzde(r['ort_teklif'], r['ym']):.2f}")
+    kaz = [yuzde(r["kazanan"], r["ym"]) for r in rows if r["kazanan"] is not None]
+    print(f"\nÖzet: {len(rows)} ihale, ortalama katılımcı {sum(r['n'] for r in rows) / len(rows):.1f}"
+          + (f", ortalama kazanan tenzilat %{sum(kaz) / len(kaz):.2f}" if kaz else ""))
+
+
+def cmd_rakip(con, a):
+    rows = con.execute(
+        """SELECT firma, COUNT(DISTINCT ihale_kod) n, SUM(durum='kazanan') k,
+                  AVG(CASE WHEN yaklasik_maliyet > 0 THEN (1 - teklif / yaklasik_maliyet) * 100 END) tz,
+                  MAX(tarih) son
+           FROM katilimcilar
+           WHERE teklif IS NOT NULL AND (? IS NULL OR firma LIKE ?) AND (? IS NULL OR idare LIKE ?)
+           GROUP BY firma ORDER BY n DESC, k DESC LIMIT ?""",
+        (a.firma, f"%{a.firma}%" if a.firma else None, a.idare, f"%{a.idare}%" if a.idare else None,
+         a.limit)).fetchall()
+    if not rows:
+        print("Rakip verisi yok (site girişi yapılmadıysa bu analiz sunulamaz)")
+    for r in rows:
+        tz = "-" if r["tz"] is None else f"%{r['tz']:.2f}"
+        print(f"- {r['firma']}: {r['n']} ihale, {r['k'] or 0} kazanma, ortalama tenzilat {tz}, son {r['son']}")
 
 
 ISLEMLER = ("yuzde_ekle", "yuzde_cikar", "tutar_ekle", "birim_fiyat")
@@ -354,6 +467,38 @@ def main() -> None:
     s = sub.add_parser("kural-kapat")
     s.add_argument("--id", required=True, type=int)
     s.set_defaults(fn=cmd_kural_kapat)
+
+    s = sub.add_parser("katilimci-yukle")
+    s.add_argument("--kod", required=True)
+    s.add_argument("--idare", required=True)
+    s.add_argument("--yaklasik", required=True)
+    for f in ("tarih", "kaynak"):
+        s.add_argument(f"--{f}")
+    s.add_argument("dosya")
+    s.set_defaults(fn=cmd_katilimci_yukle)
+
+    s = sub.add_parser("kurum-fiyat-yukle")
+    s.add_argument("--idare", required=True)
+    for f in ("kod", "tarih", "kaynak"):
+        s.add_argument(f"--{f}")
+    s.add_argument("dosya")
+    s.set_defaults(fn=cmd_kurum_fiyat_yukle)
+
+    s = sub.add_parser("kurum-fiyat")
+    s.add_argument("poz")
+    s.add_argument("--idare")
+    s.set_defaults(fn=cmd_kurum_fiyat)
+
+    s = sub.add_parser("tenzilat")
+    s.add_argument("--idare")
+    s.add_argument("--tur")
+    s.set_defaults(fn=cmd_tenzilat)
+
+    s = sub.add_parser("rakip")
+    s.add_argument("--firma")
+    s.add_argument("--idare")
+    s.add_argument("--limit", type=int, default=20)
+    s.set_defaults(fn=cmd_rakip)
 
     a = p.parse_args()
     con = connect(a.vt or default_db())
