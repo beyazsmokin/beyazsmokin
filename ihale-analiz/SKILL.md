@@ -1,6 +1,6 @@
 ---
 name: ihale-analiz
-description: Kamu ve özel ihale dokümanlarını (idari şartname, teknik şartname, sözleşme tasarısı, birim fiyat cetveli) uçtan uca analiz eder; katılım kararı, risk listesi, yeterlilik kontrolü ve teklif hazırlık planı çıkarır. Kullanıcı bir ihale dosyası paylaştığında, "ihale", "şartname", "EKAP", "teklif", "yeterlilik" dediğinde kullan.
+description: Kamu ve özel ihale dokümanlarını (idari ve teknik şartname, sözleşme tasarısı, birim fiyat cetveli, mahal listesi, pursantaj, DWG/DXF/PDF/görsel proje çizimleri) uçtan uca analiz eder; katılım kararı, risk listesi, yeterlilik kontrolü, metraj kıyası veya keşif ve teklif hazırlık planı çıkarır. Kullanıcı bir ihale dosyası paylaştığında, "ihale", "şartname", "EKAP", "teklif", "yeterlilik", "metraj", "keşif", "pursantaj" dediğinde kullan.
 ---
 
 # İhale Analiz
@@ -36,10 +36,11 @@ yönetir. Alt ajan çalıştırabilen platformlarda her ajan ayrı çalıştır�
 | 2a | [idari-analist](agents/idari-analist.md) | `02-idari.md` |
 | 2b | [teknik-analist](agents/teknik-analist.md) | `03-teknik.md` |
 | 2c | [mali-analist](agents/mali-analist.md) | `04-mali.md` |
+| 2d | [metraj-analist](agents/metraj-analist.md) | `06-metraj.md` ve CSV'ler |
 | 3 | [risk-denetci](agents/risk-denetci.md) | `05-riskler.md` |
 | 4 | [rapor-yazari](agents/rapor-yazari.md) | `rapor.md` |
 
-2a, 2b ve 2c birbirinden bağımsızdır, paralel çalışabilir.
+2a, 2b, 2c ve 2d birbirinden bağımsızdır, paralel çalışabilir.
 
 ## 3. Hafıza kuralları
 

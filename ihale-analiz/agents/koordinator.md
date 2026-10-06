@@ -8,10 +8,10 @@
 1. İhale kodunu belirle (EKAP İKN varsa onu, yoksa `idare-konu-tarih`).
    `ihaleler/<ihale-kodu>/` klasörünü oluştur, dokümanları `kaynak/` altına koy.
 2. `dokuman-okuyucu` ajanını çalıştır.
-3. `idari-analist`, `teknik-analist`, `mali-analist` ajanlarını çalıştır
+3. `idari-analist`, `teknik-analist`, `mali-analist`, `metraj-analist` ajanlarını çalıştır
    (paralel destekleniyorsa paralel). Her birine `01-ozet.md`,
    `hafiza/firma-profili.md` ve ilgili kaynak dosyaları ver.
-4. `risk-denetci` ajanını üç çıktıyla çalıştır.
+4. `risk-denetci` ajanını dört çıktıyla çalıştır.
 5. `rapor-yazari` ajanını çalıştır.
 6. Hafızayı güncelle (SKILL.md §3) ve kullanıcıya kararı sun.
 

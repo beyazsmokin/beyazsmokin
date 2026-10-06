@@ -14,7 +14,10 @@ ihale-analiz/
 │   └── workspace-template/   # çalışma alanına kopyalanan dosyalar
 ├── templates/                # rapor şablonu
 ├── platforms/                # ChatGPT, Hermes ve genel prompt
-└── scripts/init_workspace.py # çalışma alanı kurulum betiği
+└── scripts/
+    ├── init_workspace.py     # çalışma alanı kurulum betiği
+    ├── proje_oku.py          # DWG/DXF/PDF/görsel proje okuma
+    └── metraj_kiyas.py       # idare ve hesap metrajı kıyası
 ```
 
 ## Kurulum
@@ -23,6 +26,9 @@ ihale-analiz/
   kopyala ya da zip olarak yükle.
 - **ChatGPT:** [platforms/chatgpt.md](platforms/chatgpt.md)
 - **Hermes ve diğerleri:** [platforms/hermes.md](platforms/hermes.md)
+
+Metraj betikleri için isteğe bağlı: `pip install ezdxf pdfplumber pillow`.
+DWG okumak için LibreDWG (`dwg2dxf`) veya ODA File Converter gerekir.
 
 İlk kullanımda skill `~/ihale-analiz-calisma/` klasörünü kurar ve firma
 profilini sorar.

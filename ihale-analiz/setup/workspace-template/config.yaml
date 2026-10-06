@@ -6,5 +6,8 @@ dil: tr
 para_birimi: TRY
 
 analiz:
-  paralel_ajanlar: true   # platform destekliyorsa 2a/2b/2c paralel
+  paralel_ajanlar: true   # platform destekliyorsa 2a-2d paralel
   risk_esigi: orta        # dusuk | orta | yuksek: raporda gösterilecek en düşük risk
+
+metraj:
+  tolerans_yuzde: 5       # idare ile hesap arasındaki kabul edilebilir fark

@@ -11,6 +11,9 @@
 ## Teknik değerlendirme
 {karşılanamayan gereksinimler, kısıtlayıcı maddeler}
 
+## Metraj
+{birim fiyatlı: cetvel kıyası, eksik ve fazla metrajlar | götürü bedel: mahal keşfi ve pursantaj uyumu}
+
 ## Mali değerlendirme
 {teminat, ödeme, fiyat farkı, kârlılık yorumu}
 
