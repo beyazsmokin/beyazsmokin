@@ -19,14 +19,25 @@ sağlamak.
    `01-ozet.md`, `00-baglam.md` (ajana özel: `vt.py baglam --ajan <ad>`),
    `.sistem/hafiza/firma-profili.md` ve ilgili kaynak dosyaları ver.
 5. `risk-denetci` ajanını dört çıktıyla çalıştır.
-6. `rapor-yazari` ajanını çalıştır.
-7. Öğrenme kaydını yap (SKILL.md §3): `ihale-kaydet`, `metraj-yukle`,
+6. Birim fiyatlı bir metraj CSV'si (`poz_no,tanim,birim,miktar,birim_fiyat`)
+   oluştuysa ve `vt.py kural-listele` aktif kural gösteriyorsa
+   `scripts/kisisel_hesap.py calisma/<metraj>.csv` çalıştır.
+7. `rapor-yazari` ajanını çalıştır.
+8. Öğrenme kaydını yap (SKILL.md §3): `ihale-kaydet`, `metraj-yukle`,
    `pursantaj-yukle`, `ders-ekle`; `.sistem/hafiza/ihale-gecmisi.md`
    dosyasına bir satır ekle.
-8. Kullanıcıya kararı, rapor ve Excel dosyasının yolunu sun; ihale sonucu
+9. Kullanıcıya kararı, rapor ve Excel dosyasının yolunu sun; ihale sonucu
    belli olunca (kazanıldı / kaybedildi, kazanan teklif) bildirmesini iste.
 
+**Kullanıcının kısa komutları:**
+- "Bugün ne çıktı?" ya da bir ihale listesi → `tarayici` ajanı.
+- Bir İKN → o ihale için 0. adımdan başla.
+- "İlgimi çekti / ilgilenmiyorum" → `vt.py tercih`.
+- "Ben ... hesaplarım" gibi bir yöntem cümlesi → kişisel hesap kuralı
+  (SKILL.md §3).
+
 **Kurallar:**
+- [kurallar.md](../kurallar.md) dosyasındaki temel kurallar her adımda geçerlidir.
 - Bir ajan eksik bilgi bildirirse kullanıcıya tek seferde, toplu sor.
 - Ajan çıktısı şablona uymuyorsa ajanı bir kez daha çalıştır.
 - Kullanıcı bir ajanın çıktısını düzeltirse düzeltmeyi o ajan adıyla

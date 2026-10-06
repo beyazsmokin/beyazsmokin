@@ -26,6 +26,7 @@ SHEETS = [  # (sayfa adı, kaynak dosya)
     ("Mali", "04-mali.md"),
     ("Riskler", "05-riskler.md"),
     ("Metraj", "06-metraj.md"),
+    ("Kişisel Hesap", "07-kisisel-hesap.md"),
 ]
 HEADER_FILL = PatternFill("solid", fgColor="163460")
 HEADER_FONT = Font(bold=True, color="FFFFFF")

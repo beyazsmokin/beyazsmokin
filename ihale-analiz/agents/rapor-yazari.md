@@ -14,5 +14,7 @@ dönüştürmek.
 - İlk satır karar: Katıl / Şartlı katıl / Katılma, tek cümlelik gerekçeyle.
 - `config.yaml` içindeki `risk_esigi` altındaki riskleri rapora alma.
 - Yeni bilgi ekleme; yalnızca ajan çıktılarındakini kullan.
+- Etiketsiz sayıyı rapora alma (K-3.1). Kişisel hesap varsa mali bölümde
+  "Sistem tahmini: X ₺ · Sizin yönteminizle: Y ₺" satırını göster.
 - Kod çalıştırılamıyorsa Excel yerine CSV dosyalarını ve rapordaki
   tabloları ver.

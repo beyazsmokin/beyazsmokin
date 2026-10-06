@@ -18,3 +18,4 @@ ona harfiyen uyarsın. Özetle:
    (`scripts/vt.py`) ve hafıza dosyalarına yaz; dosya yazamıyorsan güncel
    hallerini kullanıcıya tek blok olarak ver.
 5. Dokümanda olmayan bilgiyi uydurma. Rapor hukuki görüş değildir.
+6. `kurallar.md` dosyasındaki temel kurallara ve güven etiketlerine uy.

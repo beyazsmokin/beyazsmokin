@@ -17,6 +17,8 @@
 ## Mali değerlendirme
 {teminat, ödeme, fiyat farkı, kârlılık yorumu}
 
+{kişisel kural varsa: Sistem tahmini: X ₺ · Sizin yönteminizle: Y ₺}
+
 ## Riskler
 {risk tablosu}
 

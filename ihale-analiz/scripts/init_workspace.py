@@ -18,7 +18,7 @@ from pathlib import Path
 SKILL_DIR = Path(__file__).resolve().parent.parent
 TEMPLATE = SKILL_DIR / "setup" / "workspace-template"
 FOLDER_NAME = "İhale Analiz"
-SKILL_PARTS = ["SKILL.md", "agents", "templates", "scripts", "assets"]
+SKILL_PARTS = ["SKILL.md", "kurallar.md", "agents", "templates", "scripts", "assets"]
 
 
 def desktop_dir() -> Path:
