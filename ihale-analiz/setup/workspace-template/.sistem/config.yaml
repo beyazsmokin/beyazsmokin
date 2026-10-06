@@ -9,5 +9,11 @@ analiz:
   paralel_ajanlar: true   # platform destekliyorsa 2a-2d paralel
   risk_esigi: orta        # dusuk | orta | yuksek: raporda gösterilecek en düşük risk
 
+tarama:                   # tarayıcı ajanının filtreleri (tara.py)
+  iller: []               # ör. [Ankara, Konya]
+  anahtar_kelimeler: []   # ör. [okul, bina, onarım]
+  butce_min: null
+  butce_max: null
+
 metraj:
   tolerans_yuzde: 5       # idare ile hesap arasındaki kabul edilebilir fark
