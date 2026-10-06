@@ -28,3 +28,5 @@ ona harfiyen uyarsın. Özetle:
    etkinlik-ekle` ile ajandaya ekle ve raporu `scripts/html_rapor.py` ile HTML
    ve PDF'e çevir; kullanıcı bunları `scripts/panel.py` ile açılan panelde görür.
    "Kuyruktaki ihaleleri analiz et" denirse `takip.py kuyruk` listesini işle.
+   "Panel aç" denirse `scripts/panel.py --ayri` çalıştır; çalıştıramıyorsan
+   kullanıcıya çalışma alanındaki simgeli **Panel** kısayolunu söyle.

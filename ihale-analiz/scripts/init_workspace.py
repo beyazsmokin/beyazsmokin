@@ -110,31 +110,63 @@ def main() -> None:
     dwg_kontrol()
     site_girisi(sistem)
     print()
-    print("İhale paneli: klasördeki 'İhale Paneli' kısayoluna çift tıklayın "
-          "(ya da python .sistem/skill/scripts/panel.py). Panelden ihale ekler, ajandayı, "
-          "analiz sürecini ve HTML raporları izlersiniz; tarayıcıdan uygulama olarak kurulabilir.")
+    print("İhale paneli: klasördeki simgeli 'Panel' kısayoluna çift tıklayın ya da asistana "
+          "'panel aç' deyin. Panelden ihale ekler, ajandayı, analiz sürecini ve HTML raporları "
+          "izlersiniz; tarayıcıdan uygulama olarak kurulabilir.")
 
 
 def panel_kisayolu(root: Path) -> None:
-    """Çalışma alanına paneli tek tıkla açan kısayolu koyar (varsa dokunmaz)."""
-    betik = Path(".sistem") / "skill" / "scripts" / "panel.py"
+    """Çalışma alanına klasörle aynı simgeli "Panel" kısayolunu koyar (varsa dokunmaz).
+
+    Windows: Panel.lnk (pythonw ile, konsol penceresi açılmaz; olmazsa Panel.bat),
+    macOS: Panel.command (simgeli, uzantısı gizli), Linux: Panel.desktop."""
+    sistem = root / ".sistem"
+    betik = sistem / "skill" / "scripts" / "panel.py"
+    for eski in root.glob("İhale Paneli.*"):  # önceki sürümün kısayol adı
+        eski.unlink(missing_ok=True)
     if sys.platform == "win32":
-        hedef = root / "İhale Paneli.bat"
-        icerik = ('@echo off\r\ncd /d "%~dp0"\r\n'
-                  f'where pythonw >nul 2>nul && (start "" pythonw "{betik}") || (start "" python "{betik}")\r\n')
+        if (root / "Panel.lnk").exists() or (root / "Panel.bat").exists():
+            return
+        exe = Path(sys.executable)
+        w = exe.with_name("pythonw.exe")
+        ps = ("$k = (New-Object -ComObject WScript.Shell).CreateShortcut($env:IA_LNK); "
+              "$k.TargetPath = $env:IA_EXE; $k.Arguments = [char]34 + $env:IA_BETIK + [char]34 + ' --ayri'; "
+              "$k.WorkingDirectory = $env:IA_KOK; $k.IconLocation = $env:IA_IKON + ',0'; "
+              "$k.Description = 'İhale Analiz paneli'; $k.Save()")
+        ortam = {**os.environ, "IA_LNK": str(root / "Panel.lnk"), "IA_EXE": str(w if w.exists() else exe),
+                 "IA_BETIK": str(betik), "IA_KOK": str(root),
+                 "IA_IKON": str(sistem / "skill" / "assets" / "ikon.ico")}
+        subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps],
+                       env=ortam, capture_output=True)
+        if not (root / "Panel.lnk").exists():
+            (root / "Panel.bat").write_text(
+                '@echo off\r\ncd /d "%~dp0"\r\nset B=.sistem\\skill\\scripts\\panel.py\r\n'
+                'where pythonw >nul 2>nul && (start "" pythonw "%B%" --ayri) || (python "%B%" --ayri)\r\n',
+                encoding="utf-8")
     elif sys.platform == "darwin":
-        hedef = root / "İhale Paneli.command"
-        icerik = f'#!/bin/sh\ncd "$(dirname "$0")"\nnohup python3 "{betik.as_posix()}" >/dev/null 2>&1 &\n'
-    else:
-        hedef = root / "İhale Paneli.desktop"
-        icerik = ("[Desktop Entry]\nType=Application\nName=İhale Paneli\nTerminal=false\n"
-                  f"Icon={root / '.sistem/skill/assets/ikon.png'}\n"
-                  f"Exec=python3 \"{root / betik}\"\n")
-    if hedef.exists():
-        return
-    hedef.write_text(icerik, encoding="utf-8")
-    if sys.platform != "win32":
+        hedef = root / "Panel.command"
+        if hedef.exists():
+            return
+        hedef.write_text('#!/bin/sh\ncd "$(dirname "$0")"\n'
+                         'python3 .sistem/skill/scripts/panel.py --ayri\n', encoding="utf-8")
         hedef.chmod(0o755)
+        png = sistem / "skill" / "assets" / "ikon.png"
+        subprocess.run(["osascript", "-l", "JavaScript", "-e",
+                        'ObjC.import("AppKit");'
+                        f'$.NSWorkspace.sharedWorkspace.setIconForFileOptions('
+                        f'$.NSImage.alloc.initWithContentsOfFile("{png}"), "{hedef}", 0);'
+                        f'$.NSFileManager.defaultManager.setAttributesOfItemAtPathError('
+                        f'$({{NSFileExtensionHidden: true}}), "{hedef}", null);'], capture_output=True)
+    else:
+        hedef = root / "Panel.desktop"
+        if hedef.exists():
+            return
+        hedef.write_text("[Desktop Entry]\nType=Application\nName=Panel\nComment=İhale Analiz paneli\n"
+                         f"Terminal=false\nIcon={sistem / 'skill/assets/ikon.png'}\n"
+                         f"Exec=python3 \"{betik}\" --ayri\n", encoding="utf-8")
+        hedef.chmod(0o755)
+        if shutil.which("gio"):
+            subprocess.run(["gio", "set", str(hedef), "metadata::trusted", "true"], capture_output=True)
 
 
 def dwg_kontrol() -> None:

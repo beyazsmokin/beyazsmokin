@@ -62,8 +62,8 @@ maliyet yalnızca rayiçlerle hesaplanır. İhale dosyaları `Gelen Dosyalar` kl
 
 ## İhale paneli
 
-Kurulumdan sonra çalışma alanındaki **İhale Paneli** kısayolu (ya da
-`python .sistem/skill/scripts/panel.py`) paneli tarayıcıda açar. Panel
+Kurulumdan sonra çalışma alanındaki, klasörle aynı simgeyi taşıyan **Panel**
+kısayolu ya da asistana "panel aç" demek (`panel.py --ayri`) paneli tarayıcıda açar. Panel
 bilgisayarda çalışır, dış sunucu kullanmaz ve tarayıcıdan uygulama (PWA) olarak
 kurulabilir; sunucu kapalıyken son görülen veriler yine açılır.
 

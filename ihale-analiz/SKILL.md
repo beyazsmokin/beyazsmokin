@@ -1,6 +1,6 @@
 ---
 name: ihale-analiz
-description: Kamu ve özel ihale dokümanlarını (idari ve teknik şartname, sözleşme tasarısı, birim fiyat cetveli, mahal listesi, pursantaj, DWG/DXF/PDF/görsel proje çizimleri) uçtan uca analiz eder; katılım kararı, risk listesi, yeterlilik kontrolü, metraj kıyası veya keşif ve Excel rapor çıkarır, her analizden öğrenir. Kullanıcı bir ihale dosyası paylaştığında, "ihale", "şartname", "EKAP", "teklif", "yeterlilik", "metraj", "keşif", "pursantaj" dediğinde kullan.
+description: Kamu ve özel ihale dokümanlarını (idari ve teknik şartname, sözleşme tasarısı, birim fiyat cetveli, mahal listesi, pursantaj, DWG/DXF/PDF/görsel proje çizimleri) uçtan uca analiz eder; katılım kararı, risk listesi, yeterlilik kontrolü, metraj kıyası veya keşif ve Excel rapor çıkarır, her analizden öğrenir. Kullanıcı bir ihale dosyası paylaştığında, "ihale", "şartname", "EKAP", "teklif", "yeterlilik", "metraj", "keşif", "pursantaj", "panel aç", "ajanda" dediğinde kullan.
 ---
 
 # İhale Analiz
@@ -17,7 +17,7 @@ ve tek bir SQLite veritabanında tutulur.
 Masaüstü/İhale Analiz/            (özel simgeli klasör)
 ├── Gelen Dosyalar/               kullanıcı indirdiği ihale dosyalarını buraya bırakır
 ├── Taramalar/                    günlük tarama listeleri ve skorları
-├── İhale Paneli                  paneli açan kısayol (Windows .bat, macOS .command, Linux .desktop)
+├── Panel                         klasörle aynı simgeli kısayol, paneli açar
 ├── İhaleler/
 │   └── <ihale-kodu>/             her ihale ve her inceleme kendi klasöründe
 │       ├── kaynak/               o ihalenin dokümanları ve çizimleri
@@ -78,7 +78,11 @@ Panel ve ajanlar aynı veritabanını kullanır; ortak veri katmanı `scripts/ta
 - Dokümanda geçen tarihleri (yer görme, açıklama talebi son günü, teminat, sözleşme)
   `takip.py etkinlik-ekle` ile ajandaya ekle; ihale tarihini
   `takip.py ekle` / panel kaydına yaz. Hatırlatmaları ajanda kendisi üretir.
-- Kullanıcı "paneli aç" derse `panel.py` çalıştır; "panel bilgisayar açılınca
+- Kullanıcı "panel aç", "paneli aç" ya da "paneli göster" derse
+  `python .sistem/skill/scripts/panel.py --ayri` çalıştır: panel ayrı süreçte
+  başlar (açıksa yeniden başlamaz), tarayıcıda açılır ve komut hemen döner.
+  Kullanıcının bilgisayarında komut çalıştıramıyorsan klasördeki simgeli
+  **Panel** kısayoluna çift tıklamasını söyle. "Panel bilgisayar açılınca
   başlasın" derse `panel.py baslangic --ac`.
 
 ## 2. İş akışı
