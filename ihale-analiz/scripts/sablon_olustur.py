@@ -291,9 +291,9 @@ def birim_fiyat(cikti: Path):
     wb = Workbook()
     K = "'BFTC Kıyas'"
     ozet(wb, "BİRİM FİYAT (BFTC)", [
-        ("Teklif tutarı (idare miktarı)", f"={K}!J3", PARA),
+        ("İdare Yaklaşık Maliyet", f"={K}!J3", PARA),
         ("Teklif tutarı (hesap miktarı)", f"={K}!K3", PARA),
-        ("Teklif / yaklaşık maliyet", f'=IF(OR(YaklasikMaliyet="",{K}!J3=0),"",{K}!J3/YaklasikMaliyet)', YUZDE),
+        ("İdare YM / açıklanan yaklaşık maliyet", f'=IF(OR(YaklasikMaliyet="",{K}!J3=0),"",{K}!J3/YaklasikMaliyet)', YUZDE),
         ("Kalem sayısı", f'=COUNTA({K}!B{BAS}:B{SON})', "0"),
         ("Cetvelde eksik kalem", f'=COUNTIF({K}!L{BAS}:L{SON},"Cetvelde eksik")', "0"),
         ("Cetvelde fazla kalem", f'=COUNTIF({K}!L{BAS}:L{SON},"Cetvelde fazla")', "0"),
