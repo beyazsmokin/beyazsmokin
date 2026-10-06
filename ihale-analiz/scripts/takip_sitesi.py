@@ -58,9 +58,11 @@ def sistem_dir() -> Path:
 
 def ikn_norm(ikn: str) -> str:
     s = re.sub(r"\s", "", ikn or "")
+    if re.fullmatch(r"\d{2}DT\d+", s, re.I):  # doğrudan temin numarası (ör. 26DT1939622)
+        return s.upper()
     m = re.fullmatch(r"(\d{4})[/-](\d+)", s)
     if not m:
-        raise SiteHatasi(f"İKN anlaşılamadı: {ikn!r} (ör. 2026/123456)")
+        raise SiteHatasi(f"İKN anlaşılamadı: {ikn!r} (ör. 2026/123456 ya da 26DT123456)")
     return f"{m.group(1)}/{m.group(2)}"
 
 
@@ -389,37 +391,120 @@ def _kod_ve_indir(ctx, sayfa, hedef: Path, kod_iste, bildir) -> list[Path]:
             sayfa = ctx.pages[-1]
     else:
         raise SiteHatasi("Güvenlik kodu üç kez kabul edilmedi.")
+    bildir("İhale ilanı açılıyor")
+    inenler = []
+    def yakala(d):  # Playwright yerleşik işlevi dinleyici olarak kabul etmiyor
+        inenler.append(d)
+    sayfa.on("download", yakala)
+    ctx.on("page", lambda p: p.on("download", yakala))
+    sayfa.wait_for_timeout(1000)
+    # EKAP: İlan Bilgileri > "İhale İlanı" (varsa "Düzeltme İlanı") altındaki en son tarihli ilan > en altta
+    # "İhale Dokümanını İndir"
+    try:
+        sayfa.locator("a[href='#tabIlanBilgi']").first.click()
+    except Exception:
+        pass
+    sayfa.wait_for_timeout(800)
+    ilanlar = sayfa.locator("#pnlIhaleIlan a[id*='lnkbutton'], #pnlDuzeltmeIlan a[id*='lnkbutton']")
+    if ilanlar.count():
+        tarihler = [ilanlar.nth(i).inner_text().strip() for i in range(ilanlar.count())]
+        sira = max(range(len(tarihler)), key=lambda i: tarih_iso(tarihler[i]) or "")
+        ilanlar.nth(sira).click()
     bildir("İndiriliyor")
-    for metin in ("İhale Dokümanını İndir", "Dokümanı İndir", "İndir"):
+    son = time.time() + 40
+    tiklandi = False
+    while time.time() < son and not tiklandi:
+        sayfa.wait_for_timeout(1000)
+        for cerceve in sayfa.frames:  # ilan önizlemesi pencere içinde (iframe) açılabilir
+            for metin in ("İhale Dokümanını İndir", "Dokümanı İndir", "Doküman İndir"):
+                try:
+                    dugme = cerceve.get_by_text(metin, exact=False).last
+                    if dugme.count() and dugme.is_visible():
+                        dugme.scroll_into_view_if_needed()
+                        dugme.click()
+                        tiklandi = True
+                        break
+                except Exception:
+                    pass
+            if tiklandi:
+                break
+    if tiklandi:
+        son = time.time() + 180
+        while time.time() < son and not inenler:
+            # bazı ihalelerde indirmeden önce ikinci bir güvenlik kodu istenir
+            for sf in ctx.pages:
+                resim = _kod_resmi(sf)
+                if resim:
+                    kod = (kod_iste(resim) or "").strip()
+                    if not kod:
+                        raise SiteHatasi("Güvenlik kodu girilmedi.")
+                    k = sf.locator("input[type=text]:visible, input:not([type]):visible").first
+                    k.fill(kod)
+                    if not _tikla(sf, "Doğrula", 2):
+                        k.press("Enter")
+            sayfa.wait_for_timeout(1500)
+        if inenler:
+            d = inenler[0]
+            yol = hedef / (d.suggested_filename or "ihale-dokumani.zip")
+            d.save_as(yol)
+            bildir(f"İndi: {yol.name}")
+            return [yol]
+    # Sayfa yapısı değişmiş: incelemek için sayfanın kaydı bırakılır (şifre/kod içermez)
+    try:
+        (hedef / "_indirme-tanilama.html").write_text(
+            "\n<!-- çerçeve -->\n".join(c.content() for c in sayfa.frames), encoding="utf-8")
+        kayit = sayfa.evaluate("""() => [...document.querySelectorAll('a,button,input,[onclick]')]
+            .filter(e => e.offsetParent !== null)
+            .map(e => [e.tagName, e.id, (e.innerText || e.value || e.title || e.alt || '').trim().slice(0, 60),
+                       (e.getAttribute('href') || e.getAttribute('onclick') || '').slice(0, 120)])""")
+        (hedef / "_indirme-tanilama.json").write_text(json.dumps(kayit, ensure_ascii=False, indent=1), encoding="utf-8")
+        sayfa.screenshot(path=str(hedef / "_indirme-tanilama.png"), full_page=True)
+    except Exception:
+        pass
+    raise SiteHatasi("EKAP sayfasında indirme düğmesi bulunamadı. Sayfanın kaydını aldım; "
+                     "asistana 'indirme tanılama' diyerek inceletebilirsiniz.")
+
+
+def _ih_id_bul(ctx, ikn: str, kaynak_url: str | None = None):
+    """İhalenin sitedeki numarası: ilan bağlantısından; yoksa ilanlarda, takip listesinde ve
+    sonuçlarda aranır (tarihi geçmiş ihaleler ilan aramasında çıkmaz)."""
+    m = re.search(r"/goster/(\d+)", kaynak_url or "")
+    if m:
+        return m.group(1)
+    try:
+        return _satir_bul(ctx, ikn)["ih_id"]
+    except SiteHatasi:
+        pass
+    q = {"draw": "1", "start": "0", "length": "10", "search[value]": "", "ih_kayit_no": ikn}
+    for i, k in enumerate(SONUC_KOLONLARI):
+        q.update({f"columns[{i}][data]": k, f"columns[{i}][name]": k})
+    for uc in ("/kesinlesen-sonuclar", "/ihale-sonuclari"):
         try:
-            with sayfa.expect_download(timeout=180_000) as ind:
-                if not _tikla(sayfa, metin, 6):
-                    raise LookupError
-            d = ind.value
-        except LookupError:
-            continue
-        yol = hedef / (d.suggested_filename or "ihale-dokumani.zip")
-        d.save_as(yol)
-        bildir(f"İndi: {yol.name}")
-        return [yol]
-    metin = _temiz(sayfa.inner_text("body"))[:200]
-    raise SiteHatasi(f"'İndir' düğmesi bulunamadı. Sayfa: {metin}")
+            for r in ctx.request.get(TABAN + uc, params=q, headers=XHR).json().get("data") or []:
+                if _temiz(r.get("ih_kayit_no")) == ikn:
+                    return r["ih_id"]
+        except Exception:
+            pass
+    raise SiteHatasi(f"İhale sitesinde {ikn} İKN'li ihale bulunamadı.")
 
 
 def indir(ikn: str, hedef: Path, kod_iste, sistem: Path | None = None, site: str = SITE,
-          bildir=print) -> list[Path]:
-    """İhale dosyasını indirir; EKAP'ın güvenlik kodunu `kod_iste(png_bayt)` kullanıcıya sorar."""
+          bildir=print, kaynak_url: str | None = None) -> list[Path]:
+    """İhale dosyasını indirir. Tarayıcı penceresi açılmaz; EKAP'ın güvenlik kodu resmi
+    `kod_iste(png_bayt)` ile kullanıcıya (panelde) sorulur, kodu kullanıcı yazar."""
     ikn = ikn_norm(ikn)
 
     def is_(ctx):
         bildir("İhale sitesine bağlanılıyor")
-        url = _ekap_baglantisi(ctx, _satir_bul(ctx, ikn)["ih_id"])
+        if "DT" in ikn:
+            raise SiteHatasi("Bu bir doğrudan temin ilanı; sitede EKAP ihale dokümanı bağlantısı yok. "
+                             "Şartname varsa ilan metnindedir.")
+        url = _ekap_baglantisi(ctx, _ih_id_bul(ctx, ikn, kaynak_url))
         bildir("EKAP doküman sayfası açılıyor")
-        sayfa = ctx.pages[0] if ctx.pages else ctx.new_page()
+        sayfa = ctx.new_page()
         sayfa.goto(url, wait_until="domcontentloaded", timeout=60_000)
-        sayfa.bring_to_front()
         return _kod_ve_indir(ctx, sayfa, hedef, kod_iste, bildir)
-    return _oturumlu(sistem or sistem_dir(), site, is_, gorunur=True)
+    return _oturumlu(sistem or sistem_dir(), site, is_, gorunur=False)
 
 
 def _kod_terminalden(resim: bytes) -> str:

@@ -156,7 +156,7 @@ def ekle(con, alan: Path, veri: dict) -> str:
     (klasor / "calisma").mkdir(exist_ok=True)
     (klasor / "calisma" / ".takip-disi").unlink(missing_ok=True)
     temiz = alanlari_temizle(veri)
-    temiz.setdefault("ikn", ham if re.fullmatch(r"\d{4}/\d+", ham) else None)
+    temiz.setdefault("ikn", ham if re.fullmatch(r"\d{4}/\d+|\d{2}DT\d+", ham, re.I) else None)
     temiz.setdefault("durum", "takipte")
     kolon = ["kod", "eklenme", "guncelleme", *temiz]
     con.execute(f"INSERT INTO takip ({','.join(kolon)}) VALUES ({','.join('?' * len(kolon))})",
