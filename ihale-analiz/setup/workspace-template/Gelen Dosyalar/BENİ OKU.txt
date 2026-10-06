@@ -1,0 +1,5 @@
+İndirdiğiniz ihale dosyalarını (şartnameler, cetveller, proje çizimleri,
+zip arşivleri) bu klasöre bırakın ve asistana "yeni ihale" deyin.
+
+Asistan her ihale için İhaleler klasöründe ayrı bir klasör açar, dosyaları
+oraya taşır ve analiz sonuçlarını (Excel ve rapor) aynı klasöre koyar.
