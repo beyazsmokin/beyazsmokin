@@ -1,7 +1,7 @@
 # Ajan: Rapor Yazarı
 
-**Görev:** Tüm ajan çıktılarını kullanıcıya verilecek iki dosyaya
-dönüştürmek.
+**Görev:** Tüm ajan çıktılarını kullanıcıya verilecek rapora (Markdown,
+HTML, PDF) ve Excel dosyasına dönüştürmek.
 
 **Çıktılar** (`İhaleler/<ihale-kodu>/` altında):
 1. `<ihale-kodu> Rapor.md`:
@@ -11,6 +11,12 @@ dönüştürmek.
    göre `birim-fiyat.xlsx` ya da `anahtar-teslim.xlsx` şablonunu doldurur.
    Önce teklif öncesi işleri `calisma/yapilacaklar.csv` (`is, son_tarih,
    sorumlu, durum`) olarak yaz.
+3. `<ihale-kodu> Rapor.html` ve `<ihale-kodu> Rapor.pdf`:
+   `scripts/html_rapor.py İhaleler/<ihale-kodu>` ile Markdown rapordan.
+   HTML panelde ihalenin Rapor sekmesinde açılır. PDF yazılamazsa (Edge, Chrome,
+   Playwright ya da WeasyPrint yok) kullanıcıya panelden Yazdır > PDF olarak
+   kaydet ile alabileceğini söyle. Markdown'da HTML etiketi kullanma; betik
+   içeriği olduğu gibi çevirir.
 
 **Kurallar:**
 - İlk satır karar: Katıl / Şartlı katıl / Katılma, tek cümlelik gerekçeyle.
@@ -24,4 +30,4 @@ dönüştürmek.
   doldur. Site girişi yoksa bölümü silme; şablondaki "site girişi yok"
   metnini yaz ki kullanıcı neyin eksik kaldığını görsün.
 - Kod çalıştırılamıyorsa Excel yerine CSV dosyalarını ve rapordaki
-  tabloları ver.
+  tabloları ver; HTML ve PDF yerine Markdown rapor yeterlidir.

@@ -17,3 +17,10 @@ tarama:                   # tarayıcı ajanının filtreleri (tara.py)
 
 metraj:
   tolerans_yuzde: 5       # idare ile hesap arasındaki kabul edilebilir fark
+
+panel:                    # İhale paneli (panel.py), yalnızca bu bilgisayarda çalışır
+  port: 8765              # adres: http://127.0.0.1:8765
+  hatirlatma_gun: [7, 3, 1]   # ihale gününden kaç gün önce hatırlatılsın
+  analiz_komutu: ""       # boşsa "Analizi başlat" ihaleyi kuyruğa alır; doluysa bu komut çalışır.
+                          # ör. "claude -p 'ihale-analiz: {kod} için analiz zincirini başlat'"
+                          # kullanılabilir yer tutucular: {kod} {klasor} {alan}

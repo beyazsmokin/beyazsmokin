@@ -17,11 +17,13 @@ ve tek bir SQLite veritabanında tutulur.
 Masaüstü/İhale Analiz/            (özel simgeli klasör)
 ├── Gelen Dosyalar/               kullanıcı indirdiği ihale dosyalarını buraya bırakır
 ├── Taramalar/                    günlük tarama listeleri ve skorları
+├── İhale Paneli                  paneli açan kısayol (Windows .bat, macOS .command, Linux .desktop)
 ├── İhaleler/
 │   └── <ihale-kodu>/             her ihale ve her inceleme kendi klasöründe
 │       ├── kaynak/               o ihalenin dokümanları ve çizimleri
 │       ├── calisma/              ajan çıktıları (01-ozet.md … 06-metraj.md, CSV'ler)
-│       ├── <ihale-kodu> Rapor.md
+│       ├── calisma/durum.json  analiz adımlarının durumu (panel canlı gösterir)
+│       ├── <ihale-kodu> Rapor.md / .html / .pdf
 │       └── <ihale-kodu> Analiz.xlsx
 └── .sistem/                      GİZLİ: kullanıcı dokunmaz
     ├── config.yaml
@@ -57,6 +59,28 @@ kullanıcıya bunu açıkça söyle. Şifre yalnızca işletim sisteminin şifre
 kasasında durur; sohbette isteme, dosyaya ya da hafızaya yazma (K-10.1).
 Ayrıntı: [setup/KURULUM.md](setup/KURULUM.md) adım 4.
 
+### İhale paneli
+
+`scripts/panel.py` kullanıcının bilgisayarında (yalnızca 127.0.0.1) bir web paneli
+açar; tarayıcıdan uygulama (PWA) olarak kurulabilir, dış sunucu kullanmaz.
+Kullanıcı panelden ihale ekler ve dosyasını yükler, ihale günlerini, yer görme,
+açıklama talebi gibi tarihleri ajandada izler (.ics ile takvimine aktarır),
+"Analizi başlat" ile ihaleyi kuyruğa alır, analiz sürecini adım adım canlı izler,
+HTML raporu panelde okur, PDF ve Excel'i indirir, ihale sonucunu girer.
+Panel ve ajanlar aynı veritabanını kullanır; ortak veri katmanı `scripts/takip.py`.
+
+- Kullanıcı "kuyruktaki ihaleleri analiz et" derse `takip.py kuyruk` listesindeki
+  her ihale için 2. bölümdeki akışı çalıştır.
+- Akış boyunca her adımın başında ve sonunda
+  `takip.py adim --kod <kod> --adim <0|1|2a|2b|2c|2d|3|4|5> --durum basladi|bitti|hata [--mesaj "..."]`
+  yaz; panel süreci buradan gösterir. Kod çalıştırılamıyorsa adım çıktı dosyalarından
+  (`calisma/01-ozet.md` …) çıkarılır.
+- Dokümanda geçen tarihleri (yer görme, açıklama talebi son günü, teminat, sözleşme)
+  `takip.py etkinlik-ekle` ile ajandaya ekle; ihale tarihini
+  `takip.py ekle` / panel kaydına yaz. Hatırlatmaları ajanda kendisi üretir.
+- Kullanıcı "paneli aç" derse `panel.py` çalıştır; "panel bilgisayar açılınca
+  başlasın" derse `panel.py baslangic --ac`.
+
 ## 2. İş akışı
 
 Koordinatör ajan ([agents/koordinator.md](agents/koordinator.md)) akışı
@@ -73,7 +97,7 @@ yönetir. Alt ajan çalıştırabilen platformlarda her ajan ayrı çalıştır�
 | 2c | [mali-analist](agents/mali-analist.md) | `04-mali.md`, varsa `07-kisisel-hesap.md` |
 | 2d | [metraj-analist](agents/metraj-analist.md) | `06-metraj.md` ve CSV'ler |
 | 3 | [risk-denetci](agents/risk-denetci.md) | `05-riskler.md` |
-| 4 | [rapor-yazari](agents/rapor-yazari.md) | `<kod> Rapor.md`, `<kod> Analiz.xlsx` |
+| 4 | [rapor-yazari](agents/rapor-yazari.md) | `<kod> Rapor.md`, `.html`, `.pdf`, `<kod> Analiz.xlsx` |
 | 5 | koordinatör | veritabanına ve hafızaya kayıt |
 
 2a, 2b, 2c ve 2d birbirinden bağımsızdır, paralel çalışabilir. Bir İKN
@@ -127,7 +151,9 @@ altındaki Markdown dosyalarına yazılır (`ogrenilenler.md`,
 
 ## 4. Çıktı
 
-Rapor [templates/analiz-raporu.md](templates/analiz-raporu.md) şablonunu,
+Rapor [templates/analiz-raporu.md](templates/analiz-raporu.md) şablonunu izler;
+`scripts/html_rapor.py İhaleler/<kod>` aynı raporu panelde açılan HTML'e ve PDF'e
+çevirir (içerik değişmez, karar rozet, güven etiketleri renkli işaret olur).
 Excel `scripts/excel_rapor.py` betiğiyle teklif türüne göre şablona yazılır:
 
 - **Birim fiyatlı (BFTC)** ihale: `birim-fiyat.xlsx` (Özet, BFTC Kıyas,
@@ -145,7 +171,8 @@ Sayfa, sütun, formül ya da biçim ekleme, silme, değiştirme; ajan çıktıla
 şablonun beklediği tablo ve CSV biçimine uyar. Şablonda değişiklik yalnızca
 kullanıcı isterse yapılır: `scripts/sablon_olustur.py` güncellenir, şablonlar
 yeniden üretilir ve `.sistem/sablonlar/` altındaki kopyalar değiştirilir. Kullanıcıya önce tek cümlelik karar (Katıl / Şartlı katıl /
-Katılma), sonra iki dosyanın yolu verilir.
+Katılma), sonra rapor (HTML, PDF) ve Excel dosyasının yolu verilir; panel açıksa
+raporun panelde ihalenin Rapor sekmesinde olduğu söylenir.
 
 ## 5. Sınırlar
 

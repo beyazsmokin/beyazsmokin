@@ -18,7 +18,7 @@ from pathlib import Path
 SKILL_DIR = Path(__file__).resolve().parent.parent
 TEMPLATE = SKILL_DIR / "setup" / "workspace-template"
 FOLDER_NAME = "İhale Analiz"
-SKILL_PARTS = ["SKILL.md", "kurallar.md", "agents", "templates", "scripts", "assets"]
+SKILL_PARTS = ["SKILL.md", "kurallar.md", "agents", "templates", "scripts", "assets", "panel"]
 
 
 def desktop_dir() -> Path:
@@ -103,11 +103,38 @@ def main() -> None:
 
     hide(sistem)
     set_icon(root, sistem)
+    panel_kisayolu(root)
 
     print(f"Çalışma alanı: {root}")
     print(f"Oluşturulan dosya: {created}")
     dwg_kontrol()
     site_girisi(sistem)
+    print()
+    print("İhale paneli: klasördeki 'İhale Paneli' kısayoluna çift tıklayın "
+          "(ya da python .sistem/skill/scripts/panel.py). Panelden ihale ekler, ajandayı, "
+          "analiz sürecini ve HTML raporları izlersiniz; tarayıcıdan uygulama olarak kurulabilir.")
+
+
+def panel_kisayolu(root: Path) -> None:
+    """Çalışma alanına paneli tek tıkla açan kısayolu koyar (varsa dokunmaz)."""
+    betik = Path(".sistem") / "skill" / "scripts" / "panel.py"
+    if sys.platform == "win32":
+        hedef = root / "İhale Paneli.bat"
+        icerik = ('@echo off\r\ncd /d "%~dp0"\r\n'
+                  f'where pythonw >nul 2>nul && (start "" pythonw "{betik}") || (start "" python "{betik}")\r\n')
+    elif sys.platform == "darwin":
+        hedef = root / "İhale Paneli.command"
+        icerik = f'#!/bin/sh\ncd "$(dirname "$0")"\nnohup python3 "{betik.as_posix()}" >/dev/null 2>&1 &\n'
+    else:
+        hedef = root / "İhale Paneli.desktop"
+        icerik = ("[Desktop Entry]\nType=Application\nName=İhale Paneli\nTerminal=false\n"
+                  f"Icon={root / '.sistem/skill/assets/ikon.png'}\n"
+                  f"Exec=python3 \"{root / betik}\"\n")
+    if hedef.exists():
+        return
+    hedef.write_text(icerik, encoding="utf-8")
+    if sys.platform != "win32":
+        hedef.chmod(0o755)
 
 
 def dwg_kontrol() -> None:

@@ -14,3 +14,7 @@
    Kullanıcı siteye girişi kendi bilgisayarında `siteler.py panel` ile kurar
    ya da siteden indirdiği sonuç listelerini yükler; yüklemezse rakip,
    katılımcı, tenzilat ve kurum birim fiyatı bölümleri raporda yer almaz.
+5. İhale paneli kullanıcının kendi bilgisayarında çalışır (`panel.py`). ChatGPT
+   panele doğrudan yazamaz; kullanıcı panelden indirdiği `.sistem` kopyasıyla
+   çalışırken HTML raporu `html_rapor.py` ile üretip ihale klasörüyle birlikte
+   geri verir, kullanıcı klasörü masaüstündeki yerine koyunca panelde görünür.

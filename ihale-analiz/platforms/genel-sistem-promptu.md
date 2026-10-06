@@ -23,3 +23,8 @@ ona harfiyen uyarsın. Özetle:
    raporda rakip, katılımcı, tenzilat ve kurum birim fiyatı bölümlerinin
    olmadığını ve yaklaşık maliyetin yalnızca rayiçlerle hesaplandığını söyle.
 7. `kurallar.md` dosyasındaki temel kurallara ve güven etiketlerine uy.
+8. Kullanıcının bilgisayarında kod çalıştırabiliyorsan analiz adımlarını
+   `scripts/takip.py adim` ile kaydet, dokümandaki tarihleri `takip.py
+   etkinlik-ekle` ile ajandaya ekle ve raporu `scripts/html_rapor.py` ile HTML
+   ve PDF'e çevir; kullanıcı bunları `scripts/panel.py` ile açılan panelde görür.
+   "Kuyruktaki ihaleleri analiz et" denirse `takip.py kuyruk` listesini işle.
