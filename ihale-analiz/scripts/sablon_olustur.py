@@ -110,7 +110,13 @@ def renk(ws, aralik, kurallar):
             aralik, FormulaRule(formula=[f'ISNUMBER(SEARCH("{metin}",{aralik.split(":")[0]}))'], fill=dolgu))
 
 
-def ozet(wb, tur, sonuc_satirlari):
+TOLERANSLAR = {  # Özet'teki ad -> (tanımlı ad, varsayılan)
+    "Metraj Toleransı": ("MetrajTol", 0.05),
+    "Pursantaj Toleransı (puan)": ("PursantajTol", 0.02),
+}
+
+
+def ozet(wb, tur, sonuc_satirlari, toleranslar):
     ws = wb.active
     ws.title = "Özet"
     baslik(ws, f"İHALE ANALİZ RAPORU · {tur}",
@@ -124,7 +130,7 @@ def ozet(wb, tur, sonuc_satirlari):
         ("Teklif Türü", None), ("İhale Tarihi ve Saati", None), ("Yaklaşık Maliyet", PARA),
         ("Geçici Teminat Oranı", YUZDE), ("Geçici Teminat Tutarı", PARA), ("İşin Süresi", None),
         ("İşin Yeri", None), ("Karar", None), ("Karar Gerekçesi", None),
-        ("Metraj Toleransı", YUZDE), ("Pursantaj Toleransı (puan)", YUZDE), ("Analiz Tarihi", "dd.mm.yyyy"),
+        *[(ad, YUZDE) for ad in toleranslar], ("Analiz Tarihi", "dd.mm.yyyy"),
     ]
     r = 4
     ws.cell(3, 1, "İHALE BİLGİLERİ").font = Font(bold=True, color=LACIVERT, size=11)
@@ -142,8 +148,10 @@ def ozet(wb, tur, sonuc_satirlari):
         r += 1
     ym, oran = satir["Yaklaşık Maliyet"], satir["Geçici Teminat Oranı"]
     ws.cell(satir["Geçici Teminat Tutarı"], 2, f'=IF(OR(B{ym}="",B{oran}=""),"",B{ym}*B{oran})').fill = HESAP
-    ws.cell(satir["Metraj Toleransı"], 2, 0.05)
-    ws.cell(satir["Pursantaj Toleransı (puan)"], 2, 0.02)
+    for ad in toleranslar:
+        isim, varsayilan = TOLERANSLAR[ad]
+        ws.cell(satir[ad], 2, varsayilan)
+        wb.defined_names[isim] = DefinedName(isim, attr_text=f"'Özet'!$B${satir[ad]}")
     k = ws.cell(satir["Karar"], 2)
     k.font = Font(bold=True, size=12)
     dv = DataValidation(type="list", formula1='"Katıl,Şartlı katıl,Katılma"', allow_blank=True)
@@ -153,9 +161,6 @@ def ozet(wb, tur, sonuc_satirlari):
     ws.conditional_formatting.add(k.coordinate, CellIsRule(operator="equal", formula=['"Şartlı katıl"'], fill=SARI))
     ws.conditional_formatting.add(k.coordinate, CellIsRule(operator="equal", formula=['"Katılma"'], fill=KIRMIZI))
 
-    wb.defined_names["MetrajTol"] = DefinedName("MetrajTol", attr_text=f"'Özet'!$B${satir['Metraj Toleransı']}")
-    wb.defined_names["PursantajTol"] = DefinedName(
-        "PursantajTol", attr_text=f"'Özet'!$B${satir['Pursantaj Toleransı (puan)']}")
     wb.defined_names["YaklasikMaliyet"] = DefinedName("YaklasikMaliyet", attr_text=f"'Özet'!$B${ym}")
 
     ws.cell(3, 4, "SONUÇ ÖZETİ").font = Font(bold=True, color=LACIVERT, size=11)
@@ -298,7 +303,7 @@ def birim_fiyat(cikti: Path):
         ("Eksik yeterlilik", f'=COUNTIF(Yeterlilik!D{BAS}:D{SON},"Eksik")', "0"),
         ("Sistem tahmini (kişisel hesap)", "='Kişisel Hesap'!G3", PARA),
         ("Sizin yönteminizle", "='Kişisel Hesap'!H3", PARA),
-    ])
+    ], toleranslar=["Metraj Toleransı"])
 
     ws = wb.create_sheet("BFTC Kıyas")
     baslik(ws, "BİRİM FİYAT TEKLİF CETVELİ · METRAJ KIYASI",
@@ -357,7 +362,7 @@ def anahtar_teslim(cikti: Path):
         ("Eksik yeterlilik", f'=COUNTIF(Yeterlilik!D{BAS}:D{SON},"Eksik")', "0"),
         ("Sistem tahmini (kişisel hesap)", "='Kişisel Hesap'!G3", PARA),
         ("Sizin yönteminizle", "='Kişisel Hesap'!H3", PARA),
-    ])
+    ], toleranslar=["Pursantaj Toleransı (puan)"])
 
     ws = wb.create_sheet("Mahal Listesi")
     baslik(ws, "MAHAL LİSTESİ",
