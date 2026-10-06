@@ -19,6 +19,10 @@
 
 {kişisel kural varsa: Sistem tahmini: X ₺ · Sizin yönteminizle: Y ₺}
 
+## Piyasa ve rakip analizi
+{site girişi varsa: kurum birim fiyatları ile rayiç kıyası, bu idarenin geçmiş ihalelerinde katılımcı sayısı ve kazanan tenzilatı, sık giren rakipler ve tenzilat eğilimleri (ARŞİV, kaynak site)}
+{site girişi yoksa: "İhale sitesi girişi yapılmadığı için hızlı ihale analizi, kurum birim fiyatı tespiti, rakip, katılımcı ve tenzilat analizi sunulamadı. Yaklaşık maliyet yalnızca rayiç fiyatlarla hesaplandı. Eklemek için 'site girişi ekle' deyin."}
+
 ## Riskler
 {risk tablosu}
 

@@ -12,7 +12,13 @@ sağlamak.
    `İhaleler/<ihale-kodu>/kaynak/` altına taşı. Aynı ihale yeniden
    incelenirse kodun sonuna `-2`, `-3` ekle; her inceleme ayrı klasördedir.
 2. `vt.py baglam --idare ... --konu ...` çalıştır, çıktıyı
-   `calisma/00-baglam.md` olarak kaydet.
+   `calisma/00-baglam.md` olarak kaydet. `siteler.py durum` çıktısını da
+   ekle. Site bağlıysa `tarayici` ajanına bu ihalenin ve aynı idarenin geçmiş
+   ihalelerinin sonuç verisini (katılımcılar, teklifler, kurum birim
+   fiyatları) topla, `vt.py katilimci-yukle` ve `vt.py kurum-fiyat-yukle`
+   ile kaydet. Site girişi atlandıysa kullanıcıya bir kez, kısaca, raporda
+   rakip, katılımcı, tenzilat ve kurum birim fiyatı bölümlerinin olmayacağını
+   ve yaklaşık maliyetin yalnızca rayiçlerle hesaplanacağını söyle.
 3. `dokuman-okuyucu` ajanını çalıştır.
 4. `idari-analist`, `teknik-analist`, `mali-analist`, `metraj-analist`
    ajanlarını çalıştır (paralel destekleniyorsa paralel). Her birine
@@ -33,6 +39,8 @@ sağlamak.
 - "Bugün ne çıktı?" ya da bir ihale listesi → `tarayici` ajanı.
 - Bir İKN → o ihale için 0. adımdan başla.
 - "İlgimi çekti / ilgilenmiyorum" → `vt.py tercih`.
+- "Site girişi ekle / değiştir" → `siteler.py panel`; "site girişini sil" →
+  `siteler.py sil --site <site>`. Şifreyi sohbette isteme.
 - "Ben ... hesaplarım" gibi bir yöntem cümlesi → kişisel hesap kuralı
   (SKILL.md §3).
 

@@ -18,4 +18,8 @@ ona harfiyen uyarsın. Özetle:
    (`scripts/vt.py`) ve hafıza dosyalarına yaz; dosya yazamıyorsan güncel
    hallerini kullanıcıya tek blok olarak ver.
 5. Dokümanda olmayan bilgiyi uydurma. Rapor hukuki görüş değildir.
-6. `kurallar.md` dosyasındaki temel kurallara ve güven etiketlerine uy.
+6. İhale sitesi şifresini sohbette isteme; site girişi kullanıcının
+   bilgisayarındaki `scripts/siteler.py panel` ile yapılır. Giriş yoksa
+   raporda rakip, katılımcı, tenzilat ve kurum birim fiyatı bölümlerinin
+   olmadığını ve yaklaşık maliyetin yalnızca rayiçlerle hesaplandığını söyle.
+7. `kurallar.md` dosyasındaki temel kurallara ve güven etiketlerine uy.

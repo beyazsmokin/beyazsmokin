@@ -24,6 +24,20 @@ beğen/reddet geçmişine göre sıralamak.
    `vt.py tercih --ikn ... --karar begen|reddet --idare ... --il ... --tur ...
    --konu ... --yaklasik ... --neden "..."` ile kaydet.
 
+**Site girişi** (`siteler.py durum` bağlı site gösteriyorsa):
+- Kayıtlı sitenin ilan ya da sonuç sayfasını `siteler.py cek --site <site>
+  --url <adres> --cikti Taramalar/<tarih>-<site>.html` ile kaydet, sayfadan
+  listeyi yukarıdaki CSV biçimine çıkar. Oturum düşmüşse betik söyler:
+  kullanıcıya `siteler.py oturum-ac --site <site>` ile girişi yenilemesini
+  öner; tarayıcı alanları doldurur, CAPTCHA / e-Devlet / SMS adımını
+  kullanıcı yapar.
+- İncelenen ihalenin ya da aynı idarenin geçmiş ihalelerinin sonuç
+  sayfalarından katılımcıları (`firma,teklif,durum`) ve kurum birim
+  fiyatlarını (`poz_no,tanim,birim,birim_fiyat`) CSV olarak çıkar; koordinatör
+  `vt.py katilimci-yukle` ve `vt.py kurum-fiyat-yukle --kaynak <site>` ile
+  veritabanına yazar. Sayfada olmayan değeri boş bırak.
+- Şifreyi hiçbir zaman okuma, yazdırma, sohbete ya da dosyaya yazma (K-10.1).
+
 **Kurallar:**
 - Web'de CAPTCHA, giriş duvarı ya da robot kontrolüne takılırsan dur;
   kullanıcıdan listeyi kendisinin indirip `Gelen Dosyalar`'a bırakmasını

@@ -107,6 +107,7 @@ def main() -> None:
     print(f"Çalışma alanı: {root}")
     print(f"Oluşturulan dosya: {created}")
     dwg_kontrol()
+    site_girisi(sistem)
 
 
 def dwg_kontrol() -> None:
@@ -122,6 +123,21 @@ def dwg_kontrol() -> None:
         if cevap in ("e", "evet", "y"):
             import webbrowser
             webbrowser.open(dwg_cevirici.ODA_URL)
+
+
+def site_girisi(sistem: Path) -> None:
+    """İhale sitesi giriş panelini açar (kullanıcı panelde atlayabilir)."""
+    import siteler
+    print()
+    if siteler.oku(sistem)["durum"] != "sorulmadi":
+        print(siteler.durum_metni(siteler.oku(sistem)))
+        return
+    if not sys.stdin.isatty():
+        print("İhale sitesi girişi için: python scripts/siteler.py panel")
+        return
+    print("İhaleleri takip ettiğiniz site için tarayıcıda giriş paneli açılıyor.")
+    print("İstemezseniz panelde 'Girişi atla' deyin.")
+    print(siteler.durum_metni(siteler.panel(sistem)))
 
 
 if __name__ == "__main__":
