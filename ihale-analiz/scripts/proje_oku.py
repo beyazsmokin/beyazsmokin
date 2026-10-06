@@ -8,7 +8,6 @@ Eksik olan kütüphanenin formatı "görsel inceleme gerekli" olarak raporlanır
 DWG için ODA File Converter ya da dwg2dxf (LibreDWG) aranır (dwg_cevirici.py).
 """
 import math
-import shutil
 import subprocess
 import sys
 import tempfile
