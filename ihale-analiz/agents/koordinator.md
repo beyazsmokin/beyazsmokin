@@ -51,7 +51,8 @@ eklenen ihalenin klasörü ve `kaynak/` dosyaları hazırdır; 1. adımda taşı
 - "Bugün ne çıktı?" ya da bir ihale listesi → `tarayici` ajanı.
 - Bir İKN → o ihale için 0. adımdan başla.
 - "İlgimi çekti / ilgilenmiyorum" → `vt.py tercih`.
-- "Paneli aç" → `panel.py`; "bilgisayar açılınca panel başlasın" →
+- "Panel aç" / "paneli aç" → `panel.py --ayri` (komut çalıştıramıyorsan
+  klasördeki simgeli **Panel** kısayolunu söyle); "bilgisayar açılınca panel başlasın" →
   `panel.py baslangic --ac`. "Ajandamda ne var?" → `takip.py ajanda`.
 - "Kuyruktaki ihaleleri analiz et" → yukarıdaki kuyruk akışı.
 - "Site girişi ekle / değiştir" → `siteler.py panel`; "site girişini sil" →

@@ -71,9 +71,11 @@ dosya olarak paylaşırsa aynı analizler yapılır.
    bilgisayarında çalıştırmasını söyle.
 5. Kullanıcıya klasörün yerini ve ihale dosyalarını `Gelen Dosyalar`
    klasörüne bırakmasını söyle.
-6. **İhale paneli.** Kurulum çalışma alanına `İhale Paneli` kısayolunu koyar
-   (Windows `.bat`, macOS `.command`, Linux `.desktop`). Kullanıcıya şunu anlat:
-   - Kısayola çift tıklayınca panel tarayıcıda açılır (http://127.0.0.1:8765).
+6. **İhale paneli.** Kurulum çalışma alanına klasörle aynı simgeyi taşıyan
+   **Panel** kısayolunu koyar (Windows `Panel.lnk`, macOS `Panel.command`,
+   Linux `Panel.desktop`). Kullanıcıya şunu anlat:
+   - Panel kısayoluna çift tıklayınca ya da asistana "panel aç" deyince panel
+     tarayıcıda açılır (http://127.0.0.1:8765).
      Panel yalnızca bu bilgisayarda çalışır, internete açılmaz.
    - Chrome ya da Edge adres çubuğundaki **Uygulamayı yükle** ile panel masaüstü
      uygulaması gibi kurulur; kendi simgesi ve penceresi olur.

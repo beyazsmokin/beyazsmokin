@@ -3,6 +3,8 @@
 
 Kullanım:
   panel.py                         # paneli başlatır ve tarayıcıda açar (zaten açıksa yalnızca açar)
+  panel.py --ayri                  # paneli ayrı bir süreçte başlatır, tarayıcıda açar ve hemen döner
+                                   # (asistan "panel aç" denince bunu çalıştırır)
   panel.py --arka-plan             # tarayıcı açmadan çalışır (otomatik başlatma bunu kullanır)
   panel.py baslangic --ac|--kapat  # bilgisayar açılınca panel kendiliğinden başlasın / başlamasın
   panel.py durdur
@@ -568,6 +570,24 @@ def baslat(alan: Path, port: int, tarayici: bool) -> None:
         sunucu.server_close()
 
 
+def ayri_baslat(alan: Path, port: int) -> None:
+    """Sunucuyu bağımsız bir süreçte başlatır; çağıran (asistan) beklemeden devam eder."""
+    adres = f"http://127.0.0.1:{port}/"
+    if not calisiyor_mu(port):
+        ek = {"creationflags": 0x00000008 | 0x00000200} if sys.platform == "win32" else {"start_new_session": True}
+        subprocess.Popen([pythonw(), str(Path(__file__).resolve()), "--alan", str(alan), "--port", str(port),
+                          "--arka-plan"], cwd=alan, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, **ek)
+        for _ in range(40):
+            if calisiyor_mu(port):
+                break
+            threading.Event().wait(0.25)
+        else:
+            sys.exit("Panel başlatılamadı. `panel.py` komutunu doğrudan çalıştırıp hatayı görün.")
+    webbrowser.open(adres)
+    print(f"Panel açıldı: {adres}")
+
+
 def durdur(port: int) -> None:
     """Paneli kapatır: sunucu kendi kendini kapatma ucu sunmaz; süreci işletim sistemiyle bulur."""
     if not calisiyor_mu(port):
@@ -632,6 +652,7 @@ def main() -> None:
     p.add_argument("--alan", type=Path, help="çalışma alanı (varsayılan: Masaüstü/İhale Analiz)")
     p.add_argument("--port", type=int)
     p.add_argument("--arka-plan", action="store_true", help="tarayıcı açma")
+    p.add_argument("--ayri", action="store_true", help="ayrı süreçte başlat, tarayıcıda aç ve dön")
     sub = p.add_subparsers(dest="komut")
     s = sub.add_parser("baslangic")
     g = s.add_mutually_exclusive_group(required=True)
@@ -646,7 +667,10 @@ def main() -> None:
     elif a.komut == "durdur":
         durdur(port)
     else:
-        baslat(alan, port, not a.arka_plan)
+        if a.ayri:
+            ayri_baslat(alan, port)
+        else:
+            baslat(alan, port, not a.arka_plan)
 
 
 if __name__ == "__main__":
