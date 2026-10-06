@@ -16,7 +16,7 @@ paneli uygulama olarak kurabilsin (Chrome/Edge adres çubuğunda "Uygulamayı y�
 Panelden:
   - ihale eklenir, dosyası yüklenir, "Analizi başlat" ile kuyruğa alınır (`takip.py kuyruk`);
     `config.yaml` > panel.analiz_komutu tanımlıysa analiz o komutla hemen başlatılır,
-  - ihale günleri, yer görme, açıklama talebi gibi tarihler ajandada izlenir (.ics dışa aktarım),
+  - ihale günleri, yer görme, açıklama talebi gibi tarihler ajandada izlenir,
   - analiz süreci adım adım canlı izlenir (`calisma/durum.json`),
   - HTML rapor panelde açılır, PDF ve Excel indirilir,
   - ihale sonucu girilir; sonuç öğrenen veritabanına yazılır.
@@ -29,14 +29,15 @@ import shlex
 import subprocess
 import sys
 import threading
-import webbrowser
 from datetime import date, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 from urllib.request import urlopen
 
+import pencere
 import takip
+import takip_sitesi
 import vt
 
 SCRIPTS = Path(__file__).resolve().parent
@@ -229,6 +230,118 @@ class Uygulama:
         self.alan = alan
         self.port = port
         self.kilit = threading.Lock()
+        self.kod_istek = None   # EKAP güvenlik kodu: {"resim": data-url, "olay": Event, "kod": str}
+        self.bekleyen = None    # tıklanan bildirimin panelde gösterilecek hedefi
+        self.indirme_durum = ""
+
+    def _kod_iste(self, resim: bytes) -> str:
+        """İndirici güvenlik kodu resmini panele verir; kullanıcı kodu panelde yazar."""
+        import base64
+        istek = {"resim": "data:image/png;base64," + base64.b64encode(resim).decode(),
+                 "olay": threading.Event(), "kod": ""}
+        self.kod_istek = istek
+        istek["olay"].wait(300)
+        self.kod_istek = None
+        return istek["kod"]
+
+    def site(self, yontem: str, yol: list[str], govde: dict) -> object:
+        """Takip sitesi işleri. Ağ ve tarayıcı beklediği için panelin genel kilidini tutmaz."""
+        sistem = self.alan / ".sistem"
+        y = (yontem, *yol)
+        if y in (("GET", "ilanlar"), ("GET", "sonuclar")):
+            son = sistem / f"site-{yol[0]}.json"
+            return json.loads(son.read_text(encoding="utf-8")) if son.exists() else {"liste": []}
+        if y == ("GET", "bekleyen"):
+            b, self.bekleyen = self.bekleyen, None
+            return {"hedef": b}
+        if y == ("GET", "kod"):
+            k = self.kod_istek
+            return {"bekliyor": bool(k), "resim": k["resim"] if k else None, "durum": self.indirme_durum}
+        if y == ("POST", "kod"):
+            k = self.kod_istek
+            if not k:
+                raise Hata(409, "Güvenlik kodu beklenmiyor")
+            k["kod"] = str(govde.get("kod") or "")
+            k["olay"].set()
+            return {"alindi": True}
+        if not takip_sitesi.site_kayitli(sistem):
+            raise Hata(409, "İhale takip siteniz kayıtlı değil. Ayarlar > İhale takip sitesi ekle.")
+        try:
+            if y in (("POST", "ilanlar"), ("POST", "sonuclar")):
+                cek = takip_sitesi.liste if yol[0] == "ilanlar" else takip_sitesi.sonuclar
+                veri = {"zaman": takip.simdi(), "kaynak": "ihalesitesi.com",
+                        "filtre": govde.get("filtre") or {},
+                        "liste": cek(sistem, gun=int(govde.get("gun") or 7), filtre=govde.get("filtre") or {})}
+                (sistem / f"site-{yol[0]}.json").write_text(json.dumps(veri, ensure_ascii=False), encoding="utf-8")
+                return veri
+            if y == ("POST", "bilgi"):
+                return takip_sitesi.bilgi(govde.get("ikn", ""), sistem)
+            if y == ("POST", "esitle"):
+                return self.site_esitle()
+            if y == ("POST", "dosya"):
+                return self.ihale_dosyasi(govde.get("kod", ""))
+        except takip_sitesi.SiteHatasi as e:
+            raise Hata(502, str(e))
+        raise Hata(404, "Bulunamadı")
+
+    def site_esitle(self) -> dict:
+        """Sitedeki takip listesindeki ihaleleri panele alır."""
+        uzak = takip_sitesi.takip_listesi(self.alan / ".sistem")
+        eklenen = []
+        with self.kilit:
+            con = takip.baglan(self.alan)
+            try:
+                with con:
+                    mevcut = {t["ikn"]: t for t in takip.liste(con) if t["ikn"]}
+                    var = {x for t in takip.liste(con) for x in (t["kod"], t["ikn"]) if x}
+                    for r in uzak:
+                        t = mevcut.get(r["ikn"])
+                        if t and r["ihale_tarihi"] and t["ihale_tarihi"] != r["ihale_tarihi"]:
+                            # sitede ihale tarihi değiştiyse (zeyilname) ajanda da güncellenir
+                            takip.guncelle(con, t["kod"], {"ihale_tarihi": r["ihale_tarihi"]})
+                        if not r["ikn"] or r["ikn"] in var or takip.klasor_adi(r["ikn"]) in var:
+                            continue
+                        try:
+                            takip.ekle(con, self.alan, {"kod": r["ikn"], "ad": r["ad"], "idare": r["idare"],
+                                                        "il": r["il"], "ihale_tarihi": r["ihale_tarihi"],
+                                                        "kaynak_url": r["kaynak_url"], "notlar": r["notlar"]})
+                            eklenen.append(r["ikn"])
+                        except ValueError:
+                            pass
+            finally:
+                con.close()
+        return {"sitede": len(uzak), "eklenen": eklenen}
+
+    def site_takip(self, ikn: str | None, ekle: bool) -> str:
+        """Panelde takibe alınan ya da bırakılan ihaleyi sitede de günceller; hata paneli durdurmaz."""
+        sistem = self.alan / ".sistem"
+        if not ikn or not takip_sitesi.site_kayitli(sistem):
+            return ""
+        try:
+            (takip_sitesi.takip_et if ekle else takip_sitesi.takip_birak)(ikn, sistem)
+            return " Sitedeki takip listesi de güncellendi."
+        except takip_sitesi.SiteHatasi as e:
+            return f" Sitedeki takip listesi güncellenemedi: {e}"
+
+    def ihale_dosyasi(self, kod: str) -> dict:
+        con = takip.baglan(self.alan)
+        try:
+            t = con.execute("SELECT * FROM takip WHERE kod=?", (kod,)).fetchone()
+        finally:
+            con.close()
+        if not t:
+            raise Hata(404, "İhale bulunamadı")
+        hedef = takip.ihale_klasoru(self.alan, kod) / "kaynak"
+
+        def bildir(m):
+            self.indirme_durum = m
+        try:
+            inen = takip_sitesi.indir(t["ikn"] or t["kod"], hedef, self._kod_iste, self.alan / ".sistem",
+                                      bildir=bildir)
+        finally:
+            self.indirme_durum = ""
+        return {"dosyalar": [f.name for f in inen],
+                "mesaj": f"İhale dosyası indirildi: {', '.join(f.name for f in inen)}"}
 
     def api(self, yontem: str, yol: list[str], sorgu: dict, govde) -> object:
         alan = self.alan
@@ -296,7 +409,7 @@ class Uygulama:
             subprocess.Popen([sys.executable, str(SCRIPTS / "siteler.py"), "--sistem", str(alan / ".sistem"),
                               "panel"], cwd=alan, stdin=subprocess.DEVNULL,
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            return {"mesaj": "Site giriş paneli yeni bir sekmede açılıyor."}
+            return {"mesaj": "Site giriş paneli ayrı bir pencerede açılıyor."}
         if y == ("POST", "klasor"):
             klasor_ac(guvenli_yol(alan, (govde or {}).get("yol", "")))
             return {"acildi": True}
@@ -326,7 +439,7 @@ class Uygulama:
             if klasor.is_dir():
                 (klasor / "calisma").mkdir(exist_ok=True)
                 (klasor / "calisma" / ".takip-disi").write_text("panelden kaldırıldı\n", encoding="utf-8")
-            return {"silindi": True}
+            return {"silindi": True, "ikn": t["ikn"]}
         if (yontem, *alt) == ("GET", "surec"):
             return {"surec": takip.surec(klasor), "durum": t["durum"]}
         if (yontem, *alt) == ("POST", "analiz"):
@@ -435,8 +548,6 @@ def isleyici(app: Uygulama):
             yol = u.path
             if yol.startswith("/api/"):
                 return self._api("GET", u)
-            if yol == "/takvim.ics":
-                return self._takvim()
             if yol.startswith("/dosya/"):
                 return self._dosya(unquote(yol[len("/dosya/"):]))
             ad = "index.html" if yol in ("/", "/index.html") else yol.lstrip("/")
@@ -490,22 +601,19 @@ def isleyici(app: Uygulama):
                     return self._json({"hata": "Geçersiz JSON"}, 400)
             parcalar = [p for p in u.path[len("/api/"):].split("/") if p]
             try:
-                self._json(app.api(yontem, parcalar, parse_qs(u.query), govde))
+                if parcalar[:1] == ["site"]:
+                    return self._json(app.site(yontem, parcalar[1:], govde or {}))
+                sonuc = app.api(yontem, parcalar, parse_qs(u.query), govde)
+                # takibe alma / bırakma sitedeki takip listesine de yansır (kilidin dışında)
+                if yontem == "POST" and parcalar == ["ihaleler"]:
+                    sonuc["site"] = app.site_takip((govde or {}).get("ikn") or (govde or {}).get("kod"), True)
+                elif yontem == "DELETE" and len(parcalar) == 2 and parcalar[0] == "ihaleler":
+                    sonuc["site"] = app.site_takip(sonuc.get("ikn"), False)
+                self._json(sonuc)
             except Hata as e:
                 self._json({"hata": str(e)}, e.kod)
             except Exception as e:  # panel çökmesin, hata kullanıcıya görünsün
                 self._json({"hata": f"Beklenmeyen hata: {e}"}, 500)
-
-        def _takvim(self):
-            con = takip.baglan(app.alan)
-            try:
-                bugun = date.today()
-                olaylar = takip.ajanda(con, app.alan, bugun - timedelta(days=30), bugun + timedelta(days=365))
-            finally:
-                con.close()
-            self._yaz(200, takip.ics(olaylar).encode("utf-8"), "text/calendar; charset=utf-8",
-                      {"Content-Disposition": "attachment; filename=ihale-ajandasi.ics",
-                       "Cache-Control": "no-store"})
 
         def _dosya(self, goreli: str):
             kok = app.alan / "İhaleler"
@@ -547,21 +655,28 @@ def baslat(alan: Path, port: int, tarayici: bool) -> None:
     if calisiyor_mu(port):
         print(f"Panel zaten açık: {adres}")
         if tarayici:
-            webbrowser.open(adres)
+            pencere.ac(adres)
         return
     if not (alan / ".sistem").is_dir():
         sys.exit(f"Çalışma alanı bulunamadı: {alan}. Önce init_workspace.py çalıştırın.")
     try:
-        sunucu = ThreadingHTTPServer(("127.0.0.1", port), isleyici(Uygulama(alan, port)))
+        app = Uygulama(alan, port)
+        sunucu = ThreadingHTTPServer(("127.0.0.1", port), isleyici(app))
     except OSError:
         sys.exit(f"{port} numaralı kapı başka bir program tarafından kullanılıyor. "
                  f"config.yaml > panel.port değerini değiştirin.")
     sunucu.daemon_threads = True
     print(f"İhale Analiz paneli: {adres}")
-    print("Tarayıcının adres çubuğundaki 'Uygulamayı yükle' ile paneli uygulama olarak kurabilirsiniz.")
     print("Kapatmak için Ctrl+C.", flush=True)
+    # bildirim alanı simgesi: pencere kapansa da takip ve hesaplar arka planda sürer
+    import tepsi
+    def goster(hedef):
+        app.bekleyen = hedef
+        pencere.ac(adres)
+    tepsi.Tepsi(alan, adres, lambda: pencere.ac(adres),
+                lambda: threading.Thread(target=sunucu.shutdown, daemon=True).start(), goster).baslat()
     if tarayici:
-        threading.Timer(0.6, webbrowser.open, (adres,)).start()
+        threading.Timer(0.6, pencere.ac, (adres,)).start()
     try:
         sunucu.serve_forever()
     except KeyboardInterrupt:
@@ -584,7 +699,7 @@ def ayri_baslat(alan: Path, port: int) -> None:
             threading.Event().wait(0.25)
         else:
             sys.exit("Panel başlatılamadı. `panel.py` komutunu doğrudan çalıştırıp hatayı görün.")
-    webbrowser.open(adres)
+    pencere.ac(adres)
     print(f"Panel açıldı: {adres}")
 
 

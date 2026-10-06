@@ -279,3 +279,25 @@ dialog .dugmeler { justify-content: flex-end; margin-top: 18px; }
   .kenar, .ust, .alt-menu, .araclar, .sekmeler, .dugmeler { display: none !important; }
   .kabuk { display: block; } body { background: #fff; }
 }
+
+/* İhale sitesi düzeninde tablolar */
+.site-tablo td, .site-tablo th { vertical-align: middle; }
+.site-tablo .nowrap, .site-tablo td:last-child { white-space: nowrap; }
+.site-tablo tbody tr { cursor: pointer; }
+.rozet-d.d-takipte { background: var(--yesil-z); color: var(--yesil); }
+.ilan-pencere .bilgi { margin: 8px 0 16px; }
+
+.izgara.k3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 900px) { .izgara.k3 { grid-template-columns: 1fr; } }
+#ihale-sekme { margin-top: 12px; }
+.site-filtre { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px 10px; align-items: end; margin-bottom: 12px; }
+.site-filtre .sf-tarih { display: grid; gap: 4px; font-size: 12.5px; color: var(--ikincil); }
+.site-filtre .dugmeler { margin: 0; }
+.site-filtre .sf-not { grid-column: 1 / -1; margin: 0; }
+.site-filtre .sf-tarih { grid-column: span 2; }
+.site-filtre .sf-aralik { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.site-tablo { font-size: 13px; }
+.site-tablo td, .site-tablo th { padding: 8px 10px; }
+.site-tablo td:nth-child(4) { min-width: 320px; }
+.site-tablo td:nth-child(3) { max-width: 240px; color: var(--ikincil); }
+.dugme.kucuk { padding: 4px 10px; font-size: 12.5px; min-height: 0; }

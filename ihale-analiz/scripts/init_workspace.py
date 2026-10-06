@@ -192,7 +192,7 @@ def site_girisi(sistem: Path) -> None:
         print(siteler.durum_metni(siteler.oku(sistem)))
         return
     if not sys.stdin.isatty():
-        print("İhale sitesi girişi için: python scripts/siteler.py panel")
+        print(f"İhale sitesi girişi için: python \"{sistem / 'skill' / 'scripts' / 'siteler.py'}\" panel")
         return
     print("İhaleleri takip ettiğiniz site için tarayıcıda giriş paneli açılıyor.")
     print("İstemezseniz panelde 'Girişi atla' deyin.")

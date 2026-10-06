@@ -1,5 +1,5 @@
 // İhale Analiz paneli: uygulama kabuğunu önbellekte tutar, sunucu kapalıyken son verileri gösterir.
-const SURUM = "ihale-panel-v1";
+const SURUM = "ihale-panel-v2";
 const KABUK = ["/", "/app.js", "/stil.css", "/manifest.webmanifest", "/ikon-192.png", "/ikon-512.png",
   "/ikon-maskable.png", "/apple-touch-icon.png"];
 

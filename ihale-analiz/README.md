@@ -27,6 +27,9 @@ ihale-analiz/
     ├── excel_rapor.py        # Excel raporunu şablona doldurur
     ├── sablon_olustur.py     # BFTC ve anahtar teslim şablonlarını üretir
     ├── siteler.py            # ihale sitesi giriş paneli, şifre kasası, oturum
+    ├── takip_sitesi.py       # takip sitesi: ilanlar, sonuçlar, takip listesi, EKAP ihale dosyası
+    ├── tepsi.py              # bildirim alanı simgesi, Windows bildirimleri, arka plan izleyici
+    ├── pencere.py            # paneli kendi uygulama penceresinde açar
     ├── panel.py              # ihale paneli sunucusu (yalnızca 127.0.0.1), otomatik başlatma
     ├── takip.py              # takip edilen ihaleler, ajanda, analiz süreci (panel ve ajanların ortak verisi)
     ├── html_rapor.py         # raporu HTML'e ve PDF'e çevirir
@@ -42,10 +45,9 @@ ihale-analiz/
 - **ChatGPT:** [platforms/chatgpt.md](platforms/chatgpt.md)
 - **Hermes ve diğerleri:** [platforms/hermes.md](platforms/hermes.md)
 
-Gerekli: `pip install openpyxl keyring` (Excel, şifre kasası). Metraj için
-isteğe bağlı: `pip install ezdxf pdfplumber pillow`. İhale sitesinde oturum
-açıp sayfa çekmek için isteğe bağlı: `pip install playwright` ve
-`python -m playwright install chromium`.
+Gerekli: `pip install openpyxl keyring playwright pystray win11toast` (Excel, şifre kasası, takip sitesi, bildirim alanı simgesi ve bildirimler). Metraj için
+isteğe bağlı: `pip install ezdxf pdfplumber pillow`. Takip sitesi oturumu
+bilgisayardaki Edge ya da Chrome ile açılır; ayrıca tarayıcı indirmek gerekmez.
 DWG okumak için ücretsiz ODA File Converter ya da LibreDWG (`dwg2dxf`)
 gerekir; kurulum betiği yoksa nedenini anlatır ve indirme sayfasını önerir
 (`python scripts/dwg_cevirici.py` ile her zaman kontrol edilebilir).
@@ -63,20 +65,35 @@ maliyet yalnızca rayiçlerle hesaplanır. İhale dosyaları `Gelen Dosyalar` kl
 ## İhale paneli
 
 Kurulumdan sonra çalışma alanındaki, klasörle aynı simgeyi taşıyan **Panel**
-kısayolu ya da asistana "panel aç" demek (`panel.py --ayri`) paneli tarayıcıda açar. Panel
-bilgisayarda çalışır, dış sunucu kullanmaz ve tarayıcıdan uygulama (PWA) olarak
-kurulabilir; sunucu kapalıyken son görülen veriler yine açılır.
+kısayolu ya da asistana "panel aç" demek (`panel.py --ayri`) paneli kendi uygulama
+penceresinde açar (Edge ya da Chrome `--app` kipi; görev çubuğunda panelin simgesi
+görünür). Panel tek pencere açılır; zaten açıksa öne gelir. Pencere kapanınca simgesi
+bildirim alanında (gizli simgeler) kalır, takip ve hesaplar arka planda sürer. Panel
+bilgisayarda çalışır, dış sunucu kullanmaz.
+
+**Mimari: takip sitesi.** Bütün ihale verisi kullanıcının kendi hesabıyla girdiği ihale
+takip sitesinden gelir (şimdilik ihalesitesi.com; `scripts/takip_sitesi.py`). Takip
+listesi iki yönlüdür: panelden takibe alınan ihale sitede de takibe alınır, bırakılan
+sitede de bırakılır, sitede takip edilenler panele gelir. İhale dosyası, ilanın "EKAP
+Dökümanı" bağlantısıyla EKAP'ın doküman sayfasından indirilir; EKAP'ın güvenlik kodu
+resmi panelde gösterilir, kodu kullanıcı yazar.
+
+**Bildirimler.** Takip edilen ihalenin sonucu geldiğinde, detaylı analiz bittiğinde,
+ihale günü yaklaştığında ve analiz hata verdiğinde Windows bildirimi gelir. Bildirime
+tıklanınca panel açılır; sonuç bildiriminde sitedeki sonuç panelde pencere olarak gösterilir.
 
 | Bölüm | Ne yapar |
 |-------|----------|
-| Gösterge | Açık ihaleler, 7 gün içindeki ihale günleri, analiz süreci, son raporlar, kazanma oranı |
-| İhaleler | İhale ekle (dosya yükleme dahil), ara, filtrele, CSV indir; ihale başına bilgiler, süreç, rapor, dosyalar ve tarihler |
-| Ajanda | Ay ve liste görünümü; ihale günü, yer görme, açıklama talebi, teminat; 7/3/1 gün kala hatırlatma; `.ics` ile takvime aktarma |
+| Gösterge | Açık ihaleler, 7 gün içindeki ihale günleri, analiz süreci, son raporlar |
+| İhale İlanları | Takip sitesindeki ilanlar, sitenin arama formundaki filtrelerle; satıra tıklayınca ilan penceresi; Takibe ekle ve EKAP ihale dosyasını indir |
+| İhale Sonuçları | Kesinleşen sonuçlar: kazanan, sözleşme bedeli, tenzilat |
+| Takip Ettiklerim | Takip edilen ihaleler (sitedeki takip listesiyle eşit); İKN ile yeni ihale; ihale başına bilgiler, süreç, rapor, dosyalar ve tarihler |
+| Ajanda | Yalnızca takip edilen ihaleler; ay ve liste görünümü; ihale günü, yer görme, açıklama talebi, teminat; 7/3/1 gün kala hatırlatma |
 | Süreç | Ajanların adımları canlı (`calisma/durum.json`), günlük kaydı |
 | Raporlar | HTML rapor panelde açılır, yazdırılır; PDF ve Excel indirilir |
 | Taramalar | Günlük tarama listeleri; tek tıkla takibe alma |
 | Öğrenme | Kazanma oranı, tenzilat, rakipler, idareler, dersler, kişisel kurallar, tercih eğilimleri |
-| Ayarlar | İhale sitesi girişi, bildirimler, tema, otomatik analiz komutu |
+| Ayarlar | İhale takip sitesi girişi (diğer ayarlar standart gelir) |
 
 "Analizi başlat" ihaleyi kuyruğa alır; asistana "kuyruktaki ihaleleri analiz et"
 denince işlenir. `config.yaml` > `panel.analiz_komutu` tanımlanırsa (ör. Claude

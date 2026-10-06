@@ -62,8 +62,9 @@ Ayrıntı: [setup/KURULUM.md](setup/KURULUM.md) adım 4.
 ### İhale paneli
 
 `scripts/panel.py` kullanıcının bilgisayarında (yalnızca 127.0.0.1) bir web paneli
-açar; tarayıcıdan uygulama (PWA) olarak kurulabilir, dış sunucu kullanmaz.
-Kullanıcı panelden ihale ekler ve dosyasını yükler, ihale günlerini, yer görme,
+kendi uygulama penceresinde açar (görev çubuğunda kendi simgesi olur), dış sunucu
+kullanmaz. Kullanıcı panelden takip sitesindeki ilanları ve sonuçları görür, takibe alır
+(sitedeki takip listesine de yazılır), İKN yazarak ihale ekler, EKAP ihale dosyasını indirir, ihale günlerini, yer görme,
 açıklama talebi gibi tarihleri ajandada izler (.ics ile takvimine aktarır),
 "Analizi başlat" ile ihaleyi kuyruğa alır, analiz sürecini adım adım canlı izler,
 HTML raporu panelde okur, PDF ve Excel'i indirir, ihale sonucunu girer.
@@ -80,7 +81,12 @@ Panel ve ajanlar aynı veritabanını kullanır; ortak veri katmanı `scripts/ta
   `takip.py ekle` / panel kaydına yaz. Hatırlatmaları ajanda kendisi üretir.
 - Kullanıcı "panel aç", "paneli aç" ya da "paneli göster" derse
   `python .sistem/skill/scripts/panel.py --ayri` çalıştır: panel ayrı süreçte
-  başlar (açıksa yeniden başlamaz), tarayıcıda açılır ve komut hemen döner.
+  başlar (açıksa yeniden başlamaz), kendi penceresinde açılır ve komut hemen döner.
+- İhale verisi kullanıcının takip sitesinden gelir (`.sistem/skill/scripts/takip_sitesi.py`):
+  İKN bilgisi `bilgi <İKN>`, ilanlar `liste`, sonuçlar `sonuclar`, takip listesi
+  `takip-listesi`, `takip-et` / `takip-birak <İKN>`. Detaylı analiz için ihale dosyası
+  `indir <İKN> --hedef "İhaleler/<kod>/kaynak"`: EKAP'ın güvenlik kodunu kullanıcı
+  yazar, kodu çözmeye çalışma (K-5.10). EKAP'a doğrudan sorgu atma.
   Kullanıcının bilgisayarında komut çalıştıramıyorsan klasördeki simgeli
   **Panel** kısayoluna çift tıklamasını söyle. "Panel bilgisayar açılınca
   başlasın" derse `panel.py baslangic --ac`.
