@@ -73,6 +73,33 @@ def _metin(veri: bytes) -> str:
     return veri.decode("utf-8", "replace")
 
 
+def _office_cevir(veri: bytes, uz: str) -> bytes | None:
+    """Eski .doc/.rtf/.xls dosyasını bilgisayardaki Word/Excel ile DOCX/XLSX'e çevirir (Windows).
+    Office yoksa None döner."""
+    if sys.platform != "win32":
+        return None
+    import os
+    import subprocess
+    import tempfile
+    with tempfile.TemporaryDirectory() as d:
+        giris, cikis = os.path.join(d, "girdi" + uz), os.path.join(d, "cikti" + (".xlsx" if uz == ".xls" else ".docx"))
+        with open(giris, "wb") as f:
+            f.write(veri)
+        if uz == ".xls":
+            ps = ("$x = New-Object -ComObject Excel.Application; $x.DisplayAlerts = $false; "
+                  "$b = $x.Workbooks.Open($env:IA_GIRIS, 0, $true); $b.SaveAs($env:IA_CIKIS, 51); $b.Close($false); $x.Quit()")
+        else:
+            ps = ("$w = New-Object -ComObject Word.Application; $w.DisplayAlerts = 0; "
+                  "$d = $w.Documents.Open($env:IA_GIRIS, $false, $true); $d.SaveAs2($env:IA_CIKIS, 16); $d.Close($false); $w.Quit()")
+        try:
+            subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps], capture_output=True,
+                           timeout=180, env={**os.environ, "IA_GIRIS": giris, "IA_CIKIS": cikis},
+                           creationflags=0x08000000)
+        except (OSError, subprocess.TimeoutExpired):
+            return None
+        return Path(cikis).read_bytes() if os.path.exists(cikis) else None
+
+
 def oku(ad: str, veri: bytes) -> tuple[str | None, str]:
     """(metin, not) döner; metin None ise not okunamama nedenidir."""
     uz = Path(ad).suffix.lower()
@@ -91,6 +118,9 @@ def oku(ad: str, veri: bytes) -> tuple[str | None, str]:
         if uz in METIN:
             return _metin(veri), "metin"
         if uz in (".doc", ".xls", ".rtf"):
+            yeni = _office_cevir(veri, uz)
+            if yeni is not None:
+                return (_xlsx(yeni), "Excel (eski biçimden çevrildi)") if uz == ".xls"                     else (_docx(yeni), "Word (eski biçimden çevrildi)")
             return None, "eski Office biçimi okunamadı; dosyayı PDF ya da DOCX/XLSX olarak kaydedin"
         if uz in CIZIM:
             return None, "çizim/görsel: metraj ajanı proje_oku.py raporundan inceler"
@@ -99,18 +129,45 @@ def oku(ad: str, veri: bytes) -> tuple[str | None, str]:
         return None, f"okunamadı: {e}"
 
 
+def _zip_adi(uye: zipfile.ZipInfo) -> str:
+    """UTF-8 işareti olmayan zip adları Türkçe DOS kodlamasıyla (cp857) yazılmıştır (EKAP)."""
+    if uye.flag_bits & 0x800:
+        return uye.filename
+    try:
+        return uye.filename.encode("cp437").decode("cp857")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return uye.filename
+
+
+def _zip_uyeleri(z: zipfile.ZipFile, onek: str, derinlik: int = 0):
+    """Zip içindeki dosyalar; içteki zip'ler de açılır (EKAP dokümanı zip içinde zip gelir)."""
+    for uye in z.infolist():
+        if uye.is_dir():
+            continue
+        ad = f"{onek}/{_zip_adi(uye)}"
+        if Path(ad).name.startswith("~$"):  # Word/Excel'in açık dosya kilidi, belge değil
+            continue
+        veri = z.read(uye)
+        if ad.lower().endswith(".zip") and derinlik < 3:
+            try:
+                with zipfile.ZipFile(io.BytesIO(veri)) as ic:
+                    yield from _zip_uyeleri(ic, ad, derinlik + 1)
+                continue
+            except zipfile.BadZipFile:
+                pass
+        yield ad, veri
+
+
 def dosyalar(kaynak: Path):
     """(görünen ad, bayt) üretir; açılmış klasörü olan zip tekrar okunmaz."""
-    for f in sorted(p for p in kaynak.rglob("*") if p.is_file() and not p.name.startswith(".")):
+    for f in sorted(p for p in kaynak.rglob("*") if p.is_file() and not p.name.startswith((".", "~$"))):
         goreli = str(f.relative_to(kaynak)).replace("\\", "/")
         if f.suffix.lower() == ".zip":
             if (f.parent / f.stem).is_dir():
                 continue
             try:
                 with zipfile.ZipFile(f) as z:
-                    for uye in z.infolist():
-                        if not uye.is_dir():
-                            yield f"{goreli}/{uye.filename}", z.read(uye)
+                    yield from _zip_uyeleri(z, goreli)
             except zipfile.BadZipFile:
                 yield goreli, b""
             continue
