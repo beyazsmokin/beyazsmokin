@@ -109,3 +109,33 @@ def md(o: dict) -> list[str]:
     out.append("\n_Hesap: İhale Ofisi `ihale_akisi.py` (keşif + FDU → birim fiyat arşivi → tahmini YM → "
                "katılımcı tahmini → Monte Carlo SD). Tahminler TAHMİN etiketlidir._")
     return out
+
+
+# --- İhale Ofisim (ofis paketi): detaylı analiz ---------------------------------------------
+
+def ofisim_bul(yol: str | None = None) -> Path | None:
+    """İhale Ofisim deposu: config analiz.ofisim_yolu ya da Masaüstü/Projeler/ihale-ofisim."""
+    adaylar = [Path(yol).expanduser()] if yol else []
+    adaylar.append(Path.home() / "Desktop" / "Projeler" / "ihale-ofisim")
+    try:
+        import init_workspace
+        adaylar.append(init_workspace.desktop_dir() / "Projeler" / "ihale-ofisim")
+    except Exception:
+        pass
+    return next((p for p in adaylar if (p / "ofis" / "detay.py").is_file()), None)
+
+
+def detay(kok: Path, ikn: str, dosya: Path, cikti: Path, is_adi: str = "", zaman: int = 3600) -> dict:
+    """`python -m ofis detay` çalıştırır: doküman alımı, sözleşme türü, teklif cetveli, miktar
+    denetimi, çelişki taraması, yaklaşık maliyet, pafta ve proje metrajı, denetim; PDF rapor ve
+    teklif Excel'i üretir. Dönüş: {"cikti": metin, "adimlar": [(işaret, ad, mesaj)], "pdf", "excel"}."""
+    import re
+    cikti.mkdir(parents=True, exist_ok=True)
+    r = _calistir(kok, "-m", "ofis", "detay", ikn, dosya, "--cikti", cikti,
+                  *(["--is-adi", is_adi] if is_adi else []), zaman=zaman)
+    metin = (r.stdout or "") + (("\n" + r.stderr) if r.returncode and r.stderr else "")
+    adimlar = [(m.group(1), m.group(2).strip(), m.group(3).strip())
+               for m in re.finditer(r"^ ([+\-!x]) (\S.*?)\s{2,}(\S.*)$", metin, re.M)]
+    yol = lambda etiket: (re.search(rf"^{etiket}\s*:\s*(.+)$", metin, re.M) or [None, None])[1]
+    return {"cikti": metin, "adimlar": adimlar, "kod": r.returncode,
+            "pdf": yol("Rapor"), "excel": yol("Excel")}

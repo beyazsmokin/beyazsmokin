@@ -29,7 +29,7 @@ ihale-analiz/
     ├── siteler.py            # ihale sitesi giriş paneli, şifre kasası, oturum
     ├── takip_sitesi.py       # takip sitesi: ilanlar, sonuçlar, takip listesi, EKAP ihale dosyası
     ├── tepsi.py              # bildirim alanı simgesi, Windows bildirimleri, arka plan izleyici
-    ├── ofis.py               # ön incelemede İhale Ofisi motoru: keşif+FDU → birim fiyat arşivi → tahmini YM, katılımcı, SD bandı
+    ├── ofis.py               # kullanıcının motorları: ön incelemede İhale Ofisi (YM, katılımcı, SD), detaylı analizde İhale Ofisim (ofis detay: PDF + teklif Excel)
     ├── pencere.py            # paneli kendi uygulama penceresinde açar
     ├── panel.py              # ihale paneli sunucusu (yalnızca 127.0.0.1), otomatik başlatma
     ├── takip.py              # takip edilen ihaleler, ajanda, analiz süreci (panel ve ajanların ortak verisi)

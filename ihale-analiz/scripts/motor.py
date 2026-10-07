@@ -502,11 +502,16 @@ class Motor:
             if not self.profil_dolu():
                 mesaj += (". UYARI: firma profili boş (.sistem/hafiza/firma-profili.md); yeterlilik ve teknik "
                           "uygunluk 'Belirsiz' çıkar, asistanınıza firma bilgilerinizi yazdırın")
+            if ofis.ofisim_bul(self.analiz.get("ofisim_yolu")):
+                return f"{mesaj} · motor: İhale Ofisim"
             if not self.surucu:
                 return (f"{mesaj}. Yapay zekâ bağlantısı yok ({self.yz_ad}); ajan adımları için "
                         "asistanınıza 'Kuyruktaki ihaleleri analiz et' yazın")
             return f"{mesaj} · ajanlar: {self.yz_ad}"
         self.calistir_adim("0", hazirlik)
+        ofisim = ofis.ofisim_bul(self.analiz.get("ofisim_yolu"))
+        if ofisim:  # kullanıcının kendi detaylı analiz motoru varsa iş ona verilir, burada yeniden yapılmaz
+            return self.ofisim_detay(ofisim)
         if not self.surucu:
             return "hesaplanacak"  # ajan adımları sohbetteki asistanda (takip.py kuyruk)
 
@@ -672,6 +677,63 @@ class Motor:
                             f"karar: {self.karar}\n")
             return f"Veritabanına yazıldı: {', '.join(kayit)}" + (f", {len(self.dersler)} ders" if self.dersler else "")
         self.calistir_adim("5", ogrenme)
+        return "rapor_hazir"
+
+    def ofisim_detay(self, kok: Path) -> str:
+        """Detaylı analiz İhale Ofisim motoruyla (ofis detay): adımlar panelde, PDF rapor ve teklif
+        Excel'i ihalenin klasöründe, özet Rapor sekmesinde."""
+        import shutil
+        t, c = self.ihale, self.calisma
+        dosyalar = self.kaynak_dosyalari()
+        zipler = [f for f in dosyalar if f.suffix.lower() == ".zip"]
+        girdi = zipler[0] if len(zipler) == 1 and len(dosyalar) == 1 else self.kaynak
+        sonuc: dict = {}
+
+        def calistir():
+            sonuc.update(ofis.detay(kok, t.get("ikn") or self.kod, girdi, c / "ofisim", t.get("ad") or ""))
+            (c / "01-ofisim-detay.txt").write_text(sonuc["cikti"], encoding="utf-8")
+            if sonuc["kod"] and not sonuc["adimlar"]:
+                raise RuntimeError("İhale Ofisim detaylı analizi çalışmadı: "
+                                   + (sonuc["cikti"].strip().splitlines() or ["?"])[-1])
+            iyi = sum(1 for a in sonuc["adimlar"] if a[0] == "+")
+            return f"İhale Ofisim: {iyi}/{len(sonuc['adimlar'])} adım tamam"
+        self.calistir_adim("1", calistir)
+        # Ofisim'in adımları panelin adımlarına yazılır (ajan adımları yeniden yapılmaz)
+        esle = {"2a": ("Sözleşme türü", "Doküman alımı"), "2b": ("Çelişki taraması", "Pafta bölgeleme"),
+                "2c": ("Yaklaşık maliyet", "Teklif cetveli"), "2d": ("Miktar denetimi", "Proje metrajı"),
+                "3": ("Denetim",)}
+        for kimlik, adlar in esle.items():
+            satir = [f"{'✓' if i == '+' else '!'} {ad}: {m}" for i, ad, m in sonuc["adimlar"] if ad in adlar]
+            self.adim(kimlik, "basladi")
+            self.adim(kimlik, "bitti", " · ".join(satir) or "İhale Ofisim bu adımı raporlamadı")
+
+        def rapor():
+            ek = []
+            for kaynak, ad in ((sonuc.get("pdf"), f"{self.kod} Detaylı Analiz.pdf"),
+                               (sonuc.get("excel"), f"{self.kod} Teklif Cetveli.xlsx")):
+                if kaynak and Path(kaynak).is_file():
+                    shutil.copy2(kaynak, self.klasor / ad)
+                    ek.append(ad)
+            md = [f"# Detaylı Analiz: {t.get('ad') or self.kod}\n",
+                  f"İKN {t.get('ikn') or self.kod} · {t.get('idare') or ''}\n",
+                  "Analiz İhale Ofisim motoruyla yapıldı (`ofis detay`). Tam rapor: "
+                  + (", ".join(f"**{a}**" for a in ek) or "üretilemedi") + " (Dosyalar/Çıktılar).\n",
+                  "## Adımlar\n", "| | Adım | Sonuç |", "|---|---|---|",
+                  *[f"| {'✓' if i == '+' else '!'} | {ad} | {m.replace('|', '/')} |" for i, ad, m in sonuc["adimlar"]],
+                  "\n## Motor çıktısı\n", "```", sonuc["cikti"].strip(), "```"]
+            yol = self.klasor / f"{self.kod} Rapor.md"
+            yol.write_text("\n".join(md) + "\n", encoding="utf-8")
+            import html_rapor
+            html_rapor.olustur(self.klasor, pdf=False, md_yolu=yol)
+            return "Rapor: " + (", ".join(ek) or "yalnızca özet")
+        self.calistir_adim("4", rapor)
+        self.karar = None
+        try:
+            py("vt.py", "--vt", self.db, "ihale-kaydet", "--kod", self.kod, "--tarih", date.today().isoformat(),
+               *(x for k, v in (("idare", t.get("idare")), ("konu", t.get("ad"))) if v for x in (f"--{k}", str(v))))
+            self.adim("5", "bitti", "İhale öğrenen veritabanına kaydedildi")
+        except Exception as e:
+            self.adim("5", "hata", str(e))
         return "rapor_hazir"
 
     def profil_dolu(self) -> bool:
