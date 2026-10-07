@@ -33,7 +33,10 @@ def tarayici_yolu() -> str | None:
 
 
 def one_getir(baslik: str) -> bool:
-    """Başlığında `baslik` geçen açık pencere varsa öne getirir (Windows). İkinci pencere açılmaz."""
+    """Panelin açık penceresi varsa (simge durumunda da olsa) geri getirip öne alır (Windows).
+
+    Yalnızca Edge/Chrome penceresi sayılır ve başlık tam eşleşmeli: "İhale Analiz" ya da
+    "<sayfa> · İhale Analiz". Aynı adlı klasörün Dosya Gezgini penceresi eşleşmez."""
     if sys.platform != "win32":
         return False
     import ctypes
@@ -43,19 +46,29 @@ def one_getir(baslik: str) -> bool:
 
     @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
     def tara(hwnd, _):
-        if u.IsWindowVisible(hwnd):
-            n = u.GetWindowTextLengthW(hwnd)
-            b = ctypes.create_unicode_buffer(n + 1)
-            u.GetWindowTextW(hwnd, b, n + 1)
-            if baslik in b.value:
-                bulunan.append(hwnd)
-                return False
+        if not u.IsWindowVisible(hwnd):
+            return True
+        sinif = ctypes.create_unicode_buffer(64)
+        u.GetClassNameW(hwnd, sinif, 64)
+        if sinif.value != "Chrome_WidgetWin_1":
+            return True
+        n = u.GetWindowTextLengthW(hwnd)
+        b = ctypes.create_unicode_buffer(n + 1)
+        u.GetWindowTextW(hwnd, b, n + 1)
+        if b.value == baslik or b.value.endswith(" · " + baslik):
+            bulunan.append(hwnd)
+            return False
         return True
     u.EnumWindows(tara, 0)
     if not bulunan:
         return False
-    u.ShowWindow(bulunan[0], 9)  # SW_RESTORE
-    u.SetForegroundWindow(bulunan[0])
+    h = bulunan[0]
+    u.ShowWindow(h, 9 if u.IsIconic(h) else 5)  # SW_RESTORE / SW_SHOW
+    # Windows arka plandaki süreçlerin pencereyi öne almasını engeller; Alt tuşu dokunuşu izin verir
+    u.keybd_event(0x12, 0, 0, 0)
+    u.keybd_event(0x12, 0, 2, 0)
+    u.SetForegroundWindow(h)
+    u.BringWindowToTop(h)
     return True
 
 

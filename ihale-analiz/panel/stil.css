@@ -301,3 +301,4 @@ dialog .dugmeler { justify-content: flex-end; margin-top: 18px; }
 .site-tablo td:nth-child(4) { min-width: 320px; }
 .site-tablo td:nth-child(3) { max-width: 240px; color: var(--ikincil); }
 .dugme.kucuk { padding: 4px 10px; font-size: 12.5px; min-height: 0; }
+a[data-href] { cursor: pointer; }

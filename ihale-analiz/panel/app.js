@@ -336,7 +336,7 @@ async function ihaleler(kap, sorgu) {
     dugme.textContent = "İndiriliyor…";
     try {
       const kod = takipKodu(r.ikn) || (await takibeAl(r));
-      bildir((await ihaleDosyasiIndir(kod)).mesaj);
+      bildir((await ihaleDosyasiIndir(kod, dugme)).mesaj);
       S.detaySekme = "dosyalar";
       location.hash = `#/ihale/${kodUrl(kod)}`;
     } catch (h) { bildir(h.message, true); dugme.disabled = false; dugme.textContent = metin; }
@@ -482,7 +482,7 @@ function ihaleFormu(t = null, onEk = {}) {
 }
 
 // EKAP doküman sayfasındaki güvenlik kodu resmini gösterir; kodu kullanıcı yazar.
-async function ihaleDosyasiIndir(kod) {
+async function ihaleDosyasiIndir(kod, dugme = null) {
   bildir("İhale dosyası hazırlanıyor. EKAP güvenlik kodu birazdan burada sorulacak.");
   let bitti = false;
   const istek = api("site/dosya", { method: "POST", govde: { kod } }).finally(() => { bitti = true; });
@@ -491,6 +491,7 @@ async function ihaleDosyasiIndir(kod) {
     while (!bitti) {
       await new Promise((r) => setTimeout(r, 1000));
       const k = await api("site/kod").catch(() => ({}));
+      if (dugme && k.durum) dugme.textContent = k.durum;  // "İndiriliyor %45"
       if (k.bekliyor && k.resim !== gosterilen) {
         gosterilen = k.resim;
         const pen = $("#pencere");
@@ -666,7 +667,7 @@ async function ihaleDetay(kap, sorgu) {
         d.disabled = true;
         d.textContent = "İndiriliyor…";
         try {
-          bildir((await ihaleDosyasiIndir(kod)).mesaj);
+          bildir((await ihaleDosyasiIndir(kod, d)).mesaj);
           S.detaySekme = "dosyalar";
           yonlendir();
         } finally { d.disabled = false; d.textContent = "İhale dosyasını indir"; }
@@ -1006,6 +1007,44 @@ setInterval(() => { if (!document.hidden) bekleyeniGoster(); }, 2000);
 window.addEventListener("focus", bekleyeniGoster);
 
 api("motor").then((m) => { S.motor = m; }).catch(() => {});
+
+// Fare bağlantının üstündeyken pencerenin sol altında adres görünmesin: bağlantıların adresi
+// data-href'e taşınır, tıklama burada karşılanır (indirme, yeni pencere ve sayfa içi geçişler).
+function baglantilariGizle(kok) {
+  for (const a of kok.querySelectorAll ? kok.querySelectorAll("a[href]") : []) {
+    const h = a.getAttribute("href");
+    if (h.startsWith("javascript:")) continue;
+    a.dataset.href = h;
+    a.removeAttribute("href");
+    a.setAttribute("role", "link");
+    a.tabIndex = 0;
+  }
+}
+new MutationObserver((kayitlar) => kayitlar.forEach((k) => k.addedNodes.forEach((n) => {
+  if (n.nodeType !== 1) return;
+  if (n.matches?.("a[href]")) baglantilariGizle(n.parentNode); else baglantilariGizle(n);
+}))).observe(document.documentElement, { childList: true, subtree: true });
+baglantilariGizle(document);
+function baglantiAc(a, ev) {
+  const h = a.dataset.href;
+  ev.preventDefault();
+  if (a.hasAttribute("download")) {
+    const g = document.createElement("a");
+    g.href = h;
+    g.download = a.getAttribute("download") || "";
+    document.body.append(g); g.click(); g.remove();
+  } else if (a.target === "_blank") window.open(h, "_blank", "noopener");
+  else if (h.startsWith("#")) location.hash = h;
+  else location.href = h;
+}
+document.addEventListener("click", (ev) => {
+  const a = ev.target.closest("a[data-href]");
+  if (a && !ev.defaultPrevented) baglantiAc(a, ev);
+});
+document.addEventListener("keydown", (ev) => {
+  const a = ev.target.closest?.("a[data-href]");
+  if (a && ev.key === "Enter") baglantiAc(a, ev);
+});
 temaUygula(localStorageAl("tema") || "");
 window.addEventListener("hashchange", yonlendir);
 document.addEventListener("visibilitychange", () => {
