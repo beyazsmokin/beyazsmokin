@@ -341,3 +341,11 @@ a[data-href] { cursor: pointer; }
 [data-git]:focus-visible, [data-ilan]:focus-visible, [data-sonuc]:focus-visible, [data-gun]:focus-visible,
 a[data-href]:focus-visible, .dugme:focus-visible, .cip:focus-visible { outline: 2px solid var(--vurgu); }
 .gorunmez { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.sf-detay { grid-column: 1 / -1; }
+.sf-detay summary { cursor: pointer; color: var(--vurgu); font-weight: 600; font-size: 13px; padding: 4px 0; width: max-content; }
+.sf-detay > .site-filtre { margin: 8px 0 0; }
+th .sirala { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-transform: inherit;
+  letter-spacing: inherit; cursor: pointer; }
+th .sirala:hover { color: var(--yazi); }
+.bos .dugme { margin-left: 6px; vertical-align: middle; }
