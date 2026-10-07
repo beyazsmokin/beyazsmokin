@@ -89,7 +89,11 @@ def ozet(con, alan: Path) -> dict:
     yaklasan = [o for o in takip.ajanda(con, alan, bugun, bugun + timedelta(days=14)) if not o["tamam"]
                 and (o["tur"] != "hatirlatma" or o["kaynak"] != "otomatik"
                      or date.fromisoformat(o["tarih"]) <= bugun + timedelta(days=1))]
-    acik = [t for t in ihaleler if t["durum"] not in takip.KAPALI]
+    # açık: sonuçlanmamış ve ihale günü geçmemiş (tarihi geçmiş ama sonucu girilmemişler ayrı sayılır)
+    gun = bugun.isoformat()
+    acik = [t for t in ihaleler if t["durum"] not in takip.KAPALI and (t["ihale_tarihi"] or "9")[:10] >= gun]
+    gecmis = [t for t in ihaleler if t["durum"] not in takip.KAPALI and (t["ihale_tarihi"] or "9")[:10] < gun]
+    bilinen = [t["yaklasik"] for t in acik if t["yaklasik"]]
     analizde = []
     for t in ihaleler:
         if t["durum"] in ("hesaplanacak", "analizde"):
@@ -106,7 +110,9 @@ def ozet(con, alan: Path) -> dict:
     return {
         "sayac": sayac,
         "acik_sayi": len(acik),
-        "acik_butce": sum(t["yaklasik"] or 0 for t in acik),
+        "acik_butce": sum(bilinen) if bilinen else None,
+        "acik_butce_n": len(bilinen),
+        "gecmis_sayi": len(gecmis),
         "yaklasan": yaklasan[:12],
         "analizde": analizde,
         "raporlar": raporlar[:6],

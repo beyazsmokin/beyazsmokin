@@ -116,8 +116,14 @@ function menuCiz(sayfa, rozet = {}) {
     return `<a href="#/${yol}" class="${sayfa === yol ? "aktif" : ""}">${svg(ikon)}${ad}${r}</a>`;
   });
   $("#menu").innerHTML = ogeler.join("");
-  $("#alt-menu").innerHTML = SAYFALAR.filter(([, , y]) => ["", "ihaleler", "ajanda", "raporlar", "ogrenme"].includes(y))
-    .map(([ikon, ad, yol]) => `<a href="#/${yol}" class="${sayfa === yol ? "aktif" : ""}">${svg(ikon)}${ad}</a>`).join("");
+  const ana = ["", "ilanlar", "ihaleler", "ajanda"];
+  const kisa = { "": "Gösterge", ilanlar: "İlanlar", ihaleler: "Takip", ajanda: "Ajanda" };
+  const diger = SAYFALAR.filter(([, , y]) => !ana.includes(y));
+  $("#alt-menu").innerHTML = SAYFALAR.filter(([, , y]) => ana.includes(y))
+    .map(([ikon, , yol]) => `<a href="#/${yol}" class="${sayfa === yol ? "aktif" : ""}" ${sayfa === yol ? 'aria-current="page"' : ""}>${svg(ikon)}${kisa[yol]}</a>`).join("")
+    + `<button type="button" class="${diger.some(([, , y]) => y === sayfa) ? "aktif" : ""}" data-eylem="daha-fazla" aria-haspopup="dialog">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>Daha fazla</button>`;
+  $$("#menu a").forEach((a) => a.classList.contains("aktif") && a.setAttribute("aria-current", "page"));
 }
 
 async function yonlendir() {
@@ -150,10 +156,11 @@ async function gosterge(kap) {
   const o = await api("ozet");
   const buHafta = o.yaklasan.filter((x) => x.tur === "ihale" && gunFarki(x.tarih) <= 7).length;
   const b = o.basari;
-  menuCiz("", { ihaleler: o.sayac.hesaplanacak + o.sayac.analizde || "" });
+  menuCiz("");
   kap.innerHTML = `
   <div class="izgara k3">
-    <div class="kart gosterge"><small>Açık ihale</small><b>${o.acik_sayi}</b><span>Toplam ${kisaPara(o.acik_butce)} yaklaşık maliyet</span></div>
+    <div class="kart gosterge"><small>Açık ihale</small><b>${o.acik_sayi}</b><span>${o.acik_butce == null ? "Yaklaşık maliyet bilinmiyor"
+      : `${kisaPara(o.acik_butce)} yaklaşık maliyet${o.acik_butce_n < o.acik_sayi ? ` (${o.acik_butce_n} ihalede)` : ""}`}${o.gecmis_sayi ? ` · ${o.gecmis_sayi} ihalenin tarihi geçti, sonucu bekleniyor` : ""}</span></div>
     <div class="kart gosterge"><small>7 gün içinde ihale</small><b>${buHafta}</b><span>${o.yaklasan.length} yaklaşan kayıt (14 gün)</span></div>
     <div class="kart gosterge"><small>Analiz sürecinde</small><b>${o.sayac.hesaplanacak + o.sayac.analizde}</b><span>${o.sayac.hesaplanacak} kuyrukta, ${o.sayac.analizde} çalışıyor</span></div>
   </div>
@@ -189,8 +196,10 @@ function olaySatir(o) {
 
 // --- İhaleler ----------------------------------------------------------------------
 
+const bugunIso = () => isoGun(new Date());
 const FILTRELER = {
-  aktif: ["Aktif", (d) => !S.sabit.kapali.includes(d)],
+  aktif: ["Aktif", (d, t) => !S.sabit.kapali.includes(d) && (t?.ihale_tarihi || "9").slice(0, 10) >= bugunIso()],
+  gecmis: ["Tarihi geçen", (d, t) => !S.sabit.kapali.includes(d) && (t?.ihale_tarihi || "9").slice(0, 10) < bugunIso()],
   surec: ["Analiz", (d) => ["hesaplanacak", "analizde", "rapor_hazir"].includes(d)],
   teklif: ["Teklif verildi", (d) => d === "teklif_verildi"],
   kapanan: ["Sonuçlanan", (d) => S.sabit.kapali.includes(d)],
@@ -236,7 +245,7 @@ async function ihaleler(kap, sorgu) {
   // --- Takip ettiklerim ---------------------------------------------------------------
   const takipCiz = () => {
     const ara = S.ihaleAra.toLocaleLowerCase("tr");
-    const s = liste.filter((t) => FILTRELER[S.ihaleFiltre][1](t.durum))
+    const s = liste.filter((t) => FILTRELER[S.ihaleFiltre][1](t.durum, t))
       .filter((t) => !ara || [t.kod, t.ad, t.idare, t.il].some((v) => (v || "").toLocaleLowerCase("tr").includes(ara)))
       .sort((a, b) => (a.ihale_tarihi || "9").localeCompare(b.ihale_tarihi || "9"));
     $("#ihale-tablo").innerHTML = s.length ? `<div class="tablo-kap"><table class="tablo site-tablo"><thead><tr>
@@ -302,7 +311,7 @@ async function ihaleler(kap, sorgu) {
 
   const sekmeCiz = () => {
     $("#ihale-sekme").innerHTML = S.ihaleSekme === "takip" ? `<div class="araclar" style="margin:0 0 10px">
-        <div class="cipler">${Object.entries(FILTRELER).map(([k, [ad]]) => `<button class="cip" data-filtre="${k}">${ad}<span class="n">${liste.filter((t) => FILTRELER[k][1](t.durum)).length}</span></button>`).join("")}</div>
+        <div class="cipler">${Object.entries(FILTRELER).map(([k, [ad]]) => `<button class="cip" data-filtre="${k}">${ad}<span class="n">${liste.filter((t) => FILTRELER[k][1](t.durum, t)).length}</span></button>`).join("")}</div>
         <input type="search" id="ihale-ara" placeholder="Ara: İKN, ad, idare, şehir" value="${e(S.ihaleAra)}"><span style="flex:1"></span><span class="not" id="esitle-durum"></span></div>
       <div id="ihale-tablo"></div>` : filtreAraclari(S.ihaleSekme);
     if (S.ihaleSekme === "takip") {
@@ -578,7 +587,7 @@ async function ihaleDetay(kap, sorgu) {
     <div class="meta"><span>${e(t.kod)}</span>${t.idare ? `<span>${e(t.idare)}</span>` : ""}${t.il ? `<span>${e(t.il)}</span>` : ""}
     <span>${durumRozet(t.durum)}</span>${t.ihale_tarihi ? `<span>İhale: <b>${tarihYaz(t.ihale_tarihi)}</b> ${kapali ? "" : kalanYaz(t.ihale_tarihi)}</span>` : ""}</div></div>
     <div class="dugmeler">
-      ${kapali ? "" : `<button class="dugme ana-d" data-eylem="analiz" ${surecte ? "disabled" : ""}>${surecte ? "Analiz sürüyor" : v.dosyalar.kaynak.length ? (md ? "Yeniden analiz et" : "Detaylı analizi başlat") : "Ön incelemeyi başlat"}</button>`}
+      ${kapali ? "" : `<button class="dugme ana-d" data-eylem="analiz" ${surecte ? "disabled" : ""}>${t.durum === "analizde" ? "Analiz sürüyor" : t.durum === "hesaplanacak" ? "Kuyrukta" : v.dosyalar.kaynak.length ? (md ? "Yeniden analiz et" : "Detaylı analizi başlat") : "Ön incelemeyi başlat"}</button>`}
       ${/DT/.test(t.ikn || t.kod) ? "" : v.dosyalar.kaynak.length ? `<button class="dugme dosya-var" data-dosya-ac="${e(kod)}">Dosyayı aç</button>`
         : '<button class="dugme" data-eylem="dosya-indir">İhale dosyasını indir</button>'}
       <button class="dugme" data-eylem="duzenle">Düzenle</button>
@@ -949,7 +958,8 @@ async function ogrenme(kap) {
     <div class="kart"><h2>Sık girilen idareler</h2>${o.idareler.length ? `<div class="liste">${o.idareler.map((i) => `<div class="satir"><div class="govde"><b>${e(i.idare)}</b></div><span class="kalan">${i.n} ihale · ${i.k || 0} kazanıldı</span></div>`).join("")}</div>` : '<div class="bos">Henüz veri yok.</div>'}</div>
     <div class="kart"><h2>Rakipler <span class="sag not">site verisi, ARŞİV</span></h2>${o.rakipler.length ? `<div class="tablo-kap"><table class="tablo"><thead><tr><th>Firma</th><th class="sayi">İhale</th><th class="sayi">Kazanma</th><th class="sayi">Ort. tenzilat</th></tr></thead><tbody>
       ${o.rakipler.map((r) => `<tr><td>${e(r.firma)}</td><td class="sayi">${r.n}</td><td class="sayi">${r.k || 0}</td><td class="sayi">${r.tz == null ? "—" : "%" + r.tz.toFixed(2)}</td></tr>`).join("")}</tbody></table></div>`
-      : '<div class="bos">Rakip verisi yok. İhale sitesi girişi yapılırsa katılımcı ve teklifler buraya gelir (Ayarlar).</div>'}</div>
+      : `<div class="bos">${S.siteBagli ? "Rakip verisi henüz yok. Takip ettiğiniz ihalelerin sonuçları geldikçe katılımcı ve teklifler buraya eklenir."
+        : "Rakip verisi yok. İhale takip sitesi eklenirse katılımcı ve teklifler buraya gelir (Ayarlar)."}</div>`}</div>
     <div class="kart"><h2>Kişisel hesap kurallarınız</h2>${o.kurallar.length ? `<div class="liste">${o.kurallar.map((k) => `<div class="satir"><div class="govde"><b>${e(k.ad)}</b>
       <small>${e(k.kapsam || "tüm kalemler")} · ${e(k.deger)} ${e(islem[k.islem] || k.islem)}${k.kaynak_cumle ? ` · "${e(k.kaynak_cumle)}"` : ""}</small></div></div>`).join("")}</div>`
       : '<div class="bos">Kural yok. Asistana "betona hep %15 fire eklerim" gibi söylediğinizde kural olur; sistem tahmini değişmez, yanında gösterilir.</div>'}</div>
@@ -1009,7 +1019,18 @@ document.addEventListener("click", () => {
   if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
 }, { once: true });
 
+function dahaFazla() {
+  const pen = $("#pencere");
+  const ana = ["", "ilanlar", "ihaleler", "ajanda"];
+  pen.innerHTML = `<form method="dialog" class="daha-fazla"><h2>Bölümler</h2><nav class="liste">
+    ${SAYFALAR.filter(([, , y]) => !ana.includes(y)).map(([ikon, ad, yol]) => `<a class="satir" href="#/${yol}">${svg(ikon)}<div class="govde"><b>${ad}</b></div></a>`).join("")}
+    </nav><div class="dugmeler"><button class="dugme ana-d" type="button" data-eylem="yeni-ihale">Yeni ihale</button><button class="dugme" value="kapat">Kapat</button></div></form>`;
+  pen.showModal();
+  pen.querySelectorAll("a, [data-eylem]").forEach((a) => a.addEventListener("click", () => pen.close()));
+}
+
 document.addEventListener("click", (ev) => {
+  if (ev.target.closest('[data-eylem="daha-fazla"]')) return dahaFazla();
   const k = ev.target.closest("[data-kopya]");
   if (k) { navigator.clipboard?.writeText(k.dataset.kopya).then(() => bildir("Kopyalandı")); return; }
   const ey = ev.target.closest("[data-eylem]")?.dataset.eylem;
@@ -1046,6 +1067,7 @@ setInterval(() => { if (!document.hidden) bekleyeniGoster(); }, 2000);
 window.addEventListener("focus", bekleyeniGoster);
 
 api("motor").then((m) => { S.motor = m; }).catch(() => {});
+api("siteler").then((x) => { S.siteBagli = x.siteler.length > 0; }).catch(() => {});
 
 // Fare bağlantının üstündeyken pencerenin sol altında adres görünmesin: bağlantıların adresi
 // data-href'e taşınır, tıklama burada karşılanır (indirme, yeni pencere ve sayfa içi geçişler).
