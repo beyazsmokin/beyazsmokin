@@ -82,6 +82,16 @@ def _temiz(v) -> str:
     return " ".join(html.unescape(re.sub(r"<[^>]+>", " ", str(v or ""))).split())
 
 
+def tr_baslik(metin: str) -> str:
+    """'ESKİŞEHİR' -> 'Eskişehir' (str.title() Türkçe İ/ı harflerini bozar)."""
+    def kucuk(x):
+        return x.replace("I", "ı").replace("İ", "i").lower()
+
+    def buyuk(x):
+        return x.replace("i", "İ").replace("ı", "I").upper()
+    return " ".join(buyuk(k[:1]) + kucuk(k[1:]) for k in (metin or "").split())
+
+
 def site_kayitli(sistem: Path, site: str = SITE) -> bool:
     return site in siteler.oku(sistem)["siteler"]
 
@@ -94,7 +104,7 @@ def sadelestir(r: dict) -> dict:
         "ikn": _temiz(r.get("ih_kayit_no")) or None,
         "ad": _temiz(r.get("ih_ihale_adi")) or None,
         "idare": _temiz(r.get("ih_idare_adi")) or None,
-        "il": _temiz(r.get("ih_sehir")).title() or None,
+        "il": tr_baslik(_temiz(r.get("ih_sehir"))) or None,
         "ihale_tarihi": tarih_iso(_temiz(r.get("ih_tarihi"))),
         "ilan_tarihi": _temiz(r.get("ih_ilan_tarihi_1")) or None,
         "ihale_tipi": tur or None,
