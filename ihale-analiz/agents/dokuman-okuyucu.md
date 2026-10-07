@@ -6,6 +6,7 @@
 
 ```markdown
 # Özet: <ihale-kodu>
+- İKN:
 - İdare:
 - İşin adı / niteliği / miktarı:
 - İhale usulü:

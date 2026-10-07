@@ -41,7 +41,9 @@ eklenen ihalenin klasörü ve `kaynak/` dosyaları hazırdır; 1. adımda taşı
 5. `risk-denetci` ajanını dört çıktıyla çalıştır.
 6. Birim fiyatlı bir metraj CSV'si (`poz_no,tanim,birim,miktar,birim_fiyat`)
    oluştuysa ve `vt.py kural-listele` aktif kural gösteriyorsa
-   `scripts/kisisel_hesap.py calisma/<metraj>.csv` çalıştır.
+   `scripts/kisisel_hesap.py calisma/<metraj>.csv` çalıştır ve çıktı satırını
+   `04-mali.md` sonuna "## Kişisel hesap" başlığıyla ekle (mali analist metrajdan
+   önce bittiği için bu satırı kendisi göremez).
 7. `rapor-yazari` ajanını çalıştır.
 8. Öğrenme kaydını yap (SKILL.md §3): `ihale-kaydet`, `metraj-yukle`,
    `pursantaj-yukle`, `ders-ekle`; `.sistem/hafiza/ihale-gecmisi.md`

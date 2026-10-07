@@ -29,6 +29,7 @@ Kullanım:
   motor.py anahtar --saglayici anthropic|openai           # API anahtarını şifre kasasına yazar
 """
 import argparse
+import csv
 import json
 import re
 import subprocess
@@ -482,6 +483,9 @@ class Motor:
             mesaj = f"{b['okunan']}/{b['dosya']} dosya okundu" + (f", {b['sayfa']} sayfa" if b["sayfa"] else "")
             if b["kesilen"]:
                 mesaj += f" (metin sınırı aşıldı, {b['kesilen']} karakter okunmadı)"
+            if not self.profil_dolu():
+                mesaj += (". UYARI: firma profili boş (.sistem/hafiza/firma-profili.md); yeterlilik ve teknik "
+                          "uygunluk 'Belirsiz' çıkar, asistanınıza firma bilgilerinizi yazdırın")
             if not self.surucu:
                 return (f"{mesaj}. Yapay zekâ bağlantısı yok ({self.yz_ad}); ajan adımları için "
                         "asistanınıza 'Kuyruktaki ihaleleri analiz et' yazın")
@@ -542,6 +546,7 @@ class Motor:
                 "Excel formülleri yapar."),
                 [ozet, baglam("metraj-analist"),
                  ("vt.py pursantaj-ort", self.vt_metin("pursantaj-ort", *(["--tur", tur] if tur else []))),
+                 ("Geçmiş birim fiyatlar (vt.py fiyat, kurum-fiyat)", self.fiyat_ozeti(idare)),
                  ("Proje dosyaları (proje_oku.py)", oku(c / "00-proje.md", 120_000)), ("İhale dokümanları", belgeler)])
             (c / "06-metraj.md").write_text(md, encoding="utf-8")
             notlar = []
@@ -550,6 +555,9 @@ class Motor:
                            "--csv", c / "metraj-kiyas.csv")
                 with open(c / "06-metraj.md", "a", encoding="utf-8") as f:
                     f.write(f"\n## BFTC kıyası (metraj_kiyas.py, tolerans %{tolerans})\n\n{kiyas}")
+                gecmis = self.gecmis_fiyat_ekle(c / "metraj-kiyas.csv")
+                if gecmis:
+                    notlar.append(f"{gecmis} kalemde geçmiş fiyat")
                 eksik = kiyas.count("cetvelde eksik")
                 fazla = kiyas.count("cetvelde fazla")
                 notlar.append(f"BFTC kıyası: {eksik} kalem cetvelde eksik, {fazla} kalem fazla")
@@ -576,6 +584,10 @@ class Motor:
             raise Durdur(f"Analiz ajanları çalışmadı: {next(iter(hatalar.values()))}")
 
         kisisel = self.kisisel_hesap()
+        if kisisel and (c / "04-mali.md").exists():
+            with open(c / "04-mali.md", "a", encoding="utf-8") as f:
+                f.write(f"\n## Kişisel hesap (kisisel_hesap.py)\n\n{kisisel} (TAHMİN, kişisel kural; sistem tahmini "
+                        "değişmez)\n")
 
         def risk():
             girdi = [(f, oku(c / f)) for f in ("01-ozet.md", "02-idari.md", "03-teknik.md", "04-mali.md", "06-metraj.md")]
@@ -645,6 +657,30 @@ class Motor:
             return f"Veritabanına yazıldı: {', '.join(kayit)}" + (f", {len(self.dersler)} ders" if self.dersler else "")
         self.calistir_adim("5", ogrenme)
         return "rapor_hazir"
+
+    def profil_dolu(self) -> bool:
+        """firma-profili.md'de en az bir alan doldurulmuş mu."""
+        return bool(re.search(r"^\s*-\s*[^:\n]+:[ \t]*\S", self.hafiza("firma-profili.md"), re.M))
+
+    def fiyat_ozeti(self, idare: str | None) -> str:
+        with self.vt() as con:
+            return vt.fiyat_ozeti(con, self.kod, idare)
+
+    def gecmis_fiyat_ekle(self, yol: Path) -> int:
+        """metraj-kiyas.csv'ye geçmiş ortalama birim fiyatı yazar (Excel 'Geçmiş Birim Fiyat (Ort.)')."""
+        with open(yol, encoding="utf-8", newline="") as f:
+            satirlar = list(csv.DictReader(f))
+        with self.vt() as con:
+            gecmis = vt.gecmis_fiyatlar(con, [r["poz_no"] for r in satirlar], self.kod)
+        for r in satirlar:
+            r["gecmis_fiyat"] = gecmis.get(r["poz_no"], "")
+        alanlar = list(satirlar[0].keys()) if satirlar else ["poz_no", "tanim", "birim", "idare", "hesap",
+                                                              "birim_fiyat", "gecmis_fiyat"]
+        with open(yol, "w", encoding="utf-8", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=alanlar)
+            w.writeheader()
+            w.writerows(satirlar)
+        return len(gecmis)
 
     def kisisel_hesap(self) -> str | None:
         """Aktif kişisel hesap kuralı varsa metraja uygular (07-kisisel-hesap.md)."""

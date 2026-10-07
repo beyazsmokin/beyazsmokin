@@ -22,6 +22,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 import takip
+import vt
 
 IZLEME_SN = 60
 SITE_IZLEME_SN = 30 * 60
@@ -141,7 +142,14 @@ class Tepsi:
             con.close()
         if not izlenen:
             return
-        for r in takip_sitesi.sonuclar(sistem, gun=7):
+        sonuclar = takip_sitesi.sonuclar(sistem, gun=7)
+        con = takip.baglan(self.alan)
+        try:
+            with con:  # kazanan ve sözleşme bedeli öğrenen veritabanına (tenzilat, rakip)
+                vt.site_sonuclari_yukle(con, sonuclar, "ihalesitesi.com")
+        finally:
+            con.close()
+        for r in sonuclar:
             if r["ikn"] in izlenen:
                 self._bir_kez(f"sonuc:{r['ikn']}", "İhale sonucu geldi",
                               f"{r['ad']} ({r['ikn']}): {r['kazanan'] or 'sonuç yayımlandı'}", {"tur": "sonuc", "ilan": r})
