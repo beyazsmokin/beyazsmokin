@@ -330,7 +330,9 @@ async function ihaleler(kap, sorgu) {
   sekmeCiz();
   if (S.ihaleSekme !== "takip") siteYukle(S.ihaleSekme);
   // Sitedeki takip listesi panele alınır
-  api("site/esitle", { method: "POST" }).then(async (v) => {
+  const esitle = !S.sonEsitle || Date.now() - S.sonEsitle > 10 * 60 * 1000;
+  if (esitle) S.sonEsitle = Date.now();
+  (esitle ? api("site/esitle", { method: "POST" }) : Promise.reject()).then(async (v) => {
     const d = $("#esitle-durum");
     if (d) d.textContent = `Sitedeki takip listesiyle eşit (${v.sitede} ihale)`;
     if (v.eklenen.length) { liste = await api("ihaleler"); if (S.ihaleSekme === "takip") sekmeCiz(); bildir(`Sitedeki takip listesinden ${v.eklenen.length} ihale eklendi`); }
@@ -802,10 +804,10 @@ async function ajanda(kap) {
         const iso = isoGun(d);
         const o = gunde[iso] || [];
         return `<div class="gun${d.getMonth() !== ay.getMonth() ? " disari" : ""}${iso === isoGun(bugun) ? " bugun" : ""}${iso === S.ajandaSecili ? " secili" : ""}" data-gun="${iso}">
-          <span class="no">${d.getDate()}</span>${o.slice(0, 3).map((x) => `<div class="olay t-${e(x.tur)}${x.tamam ? " tamam" : ""}" title="${e(x.baslik)}">${x.saat ? e(x.saat) + " " : ""}${e(x.baslik)}</div>`).join("")}
+          <span class="no">${d.getDate()}</span>${o.slice(0, 3).map((x) => `<div class="olay t-${e(x.tur)}${x.tamam ? " tamam" : ""}" title="${e(x.baslik)}">${x.saat ? e(x.saat) + " " : ""}${e(x.baslik.replace(/^İhale: /, ""))}</div>`).join("")}
           ${o.length > 3 ? `<span class="fazla">+${o.length - 3} daha</span>` : ""}</div>`;
       }).join("")}</div>
-      <div class="lejant"><span style="--c:var(--vurgu)">İhale günü</span><span style="--c:var(--amber)">Hatırlatma</span>
+      <div class="lejant"><span style="--c:var(--vurgu)">İhale günü</span><span style="--c:var(--amber)">Not / hatırlatma</span>
       <span style="--c:var(--mor)">Yer görme / açıklama talebi</span><span style="--c:var(--yesil)">Teminat, sözleşme, doküman</span></div></div>
       <div class="kart" style="align-self:start"><h2>${tarihYaz(S.ajandaSecili)}<span class="sag"><button class="dugme kucuk ana-d" data-eylem="etkinlik">Ekle</button></span></h2>
       <div class="liste">${(gunde[S.ajandaSecili] || []).map((o) => olaySatirAjanda(o)).join("") || '<div class="bos">Bu gün kayıt yok.</div>'}</div></div></div>`;
@@ -1019,10 +1021,6 @@ async function hatirlat(yaklasan) {
   localStorageYaz("bildirilen", JSON.stringify({ [gun]: kayitBugun }));
 }
 
-document.addEventListener("click", () => {
-  if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
-}, { once: true });
-
 function dahaFazla() {
   const pen = $("#pencere");
   const ana = ["", "ilanlar", "ihaleler", "ajanda"];
@@ -1067,8 +1065,8 @@ async function bekleyeniGoster() {
   if (hedef.tur === "sonuc") sonucPenceresi(hedef.ilan);
   else if (hedef.tur === "ihale") { S.detaySekme = hedef.sekme || "genel"; location.hash = `#/ihale/${kodUrl(hedef.kod)}`; }
 }
-setInterval(() => { if (!document.hidden) bekleyeniGoster(); }, 2000);
 window.addEventListener("focus", bekleyeniGoster);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) bekleyeniGoster(); });
 
 api("motor").then((m) => { S.motor = m; }).catch(() => {});
 api("siteler").then((x) => { S.siteBagli = x.siteler.length > 0; }).catch(() => {});

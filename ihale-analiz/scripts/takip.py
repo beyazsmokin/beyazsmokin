@@ -390,9 +390,8 @@ def hatirlatma_gunleri(alan: Path) -> list[int]:
 
 
 def ajanda(con, alan: Path, bas: date, son: date) -> list[dict]:
-    """Aralıktaki ihale günleri, etkinlikler ve ihale tarihinden üretilen hatırlatmalar."""
+    """Aralıktaki takip edilen ihalelerin ihale günleri ve kullanıcının etkinlikleri."""
     olaylar = []
-    gunler = hatirlatma_gunleri(alan)
     for t in con.execute("SELECT * FROM takip WHERE ihale_tarihi IS NOT NULL"):
         gun = date.fromisoformat(t["ihale_tarihi"][:10])
         saat = t["ihale_tarihi"][11:16] or None
@@ -402,15 +401,8 @@ def ajanda(con, alan: Path, bas: date, son: date) -> list[dict]:
             olaylar.append({"id": f"ihale-{t['kod']}", "kod": t["kod"], "tarih": gun.isoformat(), "saat": saat,
                             "tur": "ihale", "baslik": f"İhale: {ad}", "aciklama": t["idare"],
                             "tamam": kapali, "kaynak": "otomatik", "durum": t["durum"]})
-        if kapali or t["durum"] == "teklif_verildi":
-            continue
-        for g in gunler:
-            h = gun - timedelta(days=g)
-            if bas <= h <= son:
-                olaylar.append({"id": f"hat-{t['kod']}-{g}", "kod": t["kod"], "tarih": h.isoformat(),
-                                "saat": None, "tur": "hatirlatma",
-                                "baslik": f"{g} gün kaldı: {ad}", "aciklama": "Teklif hazırlığını kontrol edin",
-                                "tamam": False, "kaynak": "otomatik", "durum": t["durum"]})
+        # Yaklaşan ihale için ayrıca 7/3/1 gün kala kayıtları üretilmez: ihale günü kaydı kalan günü
+        # zaten gösterir, hatırlatmayı Windows bildirimi yapar (tepsi.py).
     for e in con.execute(
             """SELECT e.*, t.ad ihale_ad, t.durum FROM etkinlikler e LEFT JOIN takip t ON t.kod = e.kod
                WHERE e.tarih BETWEEN ? AND ? AND (e.kod IS NULL OR t.kod IS NOT NULL)""",

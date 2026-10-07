@@ -1,7 +1,8 @@
 // İhale Analiz paneli: uygulama kabuğunu önbellekte tutar, sunucu kapalıyken son verileri gösterir.
-const SURUM = "ihale-panel-v2";
-const KABUK = ["/", "/app.js", "/stil.css", "/manifest.webmanifest", "/ikon-192.png", "/ikon-512.png",
-  "/ikon-maskable.png", "/apple-touch-icon.png"];
+const SURUM = "ihale-panel-v3";
+const KABUK = ["/", "/app.js", "/stil.css", "/manifest.webmanifest", "/ikon-192.png"];
+// Sunucu kapalıyken gösterilecek son veriler: yalnızca bu uçlar saklanır (dosyalar ve site verisi değil)
+const SAKLANAN = /^\/api\/(ozet|sabitler|ihaleler|ajanda|siteler|ogrenme|taramalar)(\/|$)/;
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(SURUM).then((c) => c.addAll(KABUK)).then(() => self.skipWaiting()));
@@ -34,7 +35,7 @@ self.addEventListener("fetch", (e) => {
   if (e.request.mode === "navigate") {
     e.respondWith(fetch(e.request).catch(() => caches.match("/")));
   } else if (u.pathname.startsWith("/api/") || u.pathname.startsWith("/dosya/")) {
-    if (u.pathname === "/api/saglik") return;
+    if (!SAKLANAN.test(u.pathname)) return;  // ağdan, önbelleğe yazmadan
     e.respondWith(agOnce(e.request));
   } else {
     e.respondWith(agOnce(e.request));
