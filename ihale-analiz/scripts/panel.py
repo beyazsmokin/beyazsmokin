@@ -313,6 +313,8 @@ class Uygulama:
                         "filtre": govde.get("filtre") or {},
                         "liste": cek(sistem, gun=int(govde.get("gun") or 7), filtre=govde.get("filtre") or {})}
                 (sistem / f"site-{yol[0]}.json").write_text(json.dumps(veri, ensure_ascii=False), encoding="utf-8")
+                if yol[0] == "sonuclar":
+                    self.sonuclari_ogren(veri["liste"])
                 return veri
             if y == ("POST", "bilgi"):
                 return takip_sitesi.bilgi(govde.get("ikn", ""), sistem)
@@ -323,6 +325,16 @@ class Uygulama:
         except takip_sitesi.SiteHatasi as e:
             raise Hata(502, str(e))
         raise Hata(404, "Bulunamadı")
+
+    def sonuclari_ogren(self, liste: list[dict]) -> int:
+        """Sitedeki kazanan ve sözleşme bedelleri öğrenen veritabanına girer (tenzilat, rakip)."""
+        with self.kilit:
+            con = takip.baglan(self.alan)
+            try:
+                with con:
+                    return vt.site_sonuclari_yukle(con, liste, "ihalesitesi.com")
+            finally:
+                con.close()
 
     def site_esitle(self) -> dict:
         """Sitedeki takip listesindeki ihaleleri panele alır."""

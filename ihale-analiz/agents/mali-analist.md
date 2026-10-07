@@ -12,9 +12,9 @@ tutarları ve bağlanacak nakit / mektup, ödeme koşulları, avans, hakediş
 sıklığı, fiyat farkı hükmü, ceza ve kesinti oranları, kaba kârlılık yorumu
 (veri yetersizse belirt).
 
-- Varsa kişisel hesap: `07-kisisel-hesap.md` içindeki
-  "Sistem tahmini: X ₺ · Sizin yönteminizle: Y ₺" satırını aynen aktar;
-  sistem tahminini kişisel kurala göre değiştirme.
+- Kişisel hesap metraj bittikten sonra çalışır (`kisisel_hesap.py`); koordinatör
+  "Sistem tahmini: X ₺ · Sizin yönteminizle: Y ₺" satırını bu dosyanın sonuna
+  ekler. Sen kişisel kurala göre tutar hesaplama, sistem tahminini değiştirme.
 
 **Yaklaşık maliyet, rakip ve tenzilat.** Önce `siteler.py durum` çalıştır.
 - Site bağlıysa: yaklaşık maliyeti kurum birim fiyatları (`vt.py kurum-fiyat`)

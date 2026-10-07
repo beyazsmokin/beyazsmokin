@@ -153,6 +153,11 @@ def cmd_pursantaj_yukle(con, a):
 
 
 def cmd_ders_ekle(con, a):
+    # aynı ders (aynı ajan, idare, metin) her analizde yeniden yazılmasın
+    if con.execute("SELECT 1 FROM dersler WHERE metin=? AND ajan IS ? AND idare IS ?",
+                   (a.metin, a.ajan, a.idare)).fetchone():
+        print("Ders zaten kayıtlı")
+        return
     con.execute("INSERT INTO dersler (tarih, metin, idare, ajan, etiket, ihale_kod) VALUES (?,?,?,?,?,?)",
                 (today(), a.metin, a.idare, a.ajan, a.etiket, a.kod))
     print("Ders kaydedildi")
@@ -168,6 +173,81 @@ def cmd_fiyat(con, a):
         return
     print(f"{a.poz} {r['tanim']} ({r['birim']}): {r['n']} kayıt, en düşük {r['mn']:.2f}, "
           f"ortalama {r['ort']:.2f}, en yüksek {r['mx']:.2f}, son kayıt {r['son']}")
+
+
+def gecmis_fiyatlar(con, pozlar, haric_kod=None) -> dict:
+    """Pozların başka ihalelerdeki ortalama birim fiyatı (metraj tablosu, ARŞİV)."""
+    pozlar = [p for p in pozlar if p]
+    if not pozlar:
+        return {}
+    yer = ",".join("?" * len(pozlar))
+    return {r["poz_no"]: round(r["ort"], 2) for r in con.execute(
+        f"""SELECT poz_no, AVG(birim_fiyat) ort FROM metraj
+            WHERE poz_no IN ({yer}) AND birim_fiyat IS NOT NULL AND (? IS NULL OR ihale_kod <> ?)
+            GROUP BY poz_no""", (*pozlar, haric_kod, haric_kod))}
+
+
+def fiyat_ozeti(con, haric_kod=None, idare=None, limit=150) -> str:
+    """Metraj ajanına verilen geçmiş birim fiyat özeti (`vt.py fiyat` ve `kurum-fiyat`un toplu hali)."""
+    bizim = con.execute(
+        """SELECT poz_no, MAX(tanim) tanim, MAX(birim) birim, COUNT(*) n, MIN(birim_fiyat) mn,
+                  AVG(birim_fiyat) ort, MAX(birim_fiyat) mx
+           FROM metraj WHERE birim_fiyat IS NOT NULL AND (? IS NULL OR ihale_kod <> ?)
+           GROUP BY poz_no ORDER BY n DESC, poz_no LIMIT ?""", (haric_kod, haric_kod, limit)).fetchall()
+    kurum = con.execute(
+        """SELECT poz_no, MAX(tanim) tanim, MAX(birim) birim, COUNT(*) n, AVG(birim_fiyat) ort,
+                  MAX(tarih) son, GROUP_CONCAT(DISTINCT kaynak) kaynak
+           FROM kurum_fiyatlari WHERE birim_fiyat IS NOT NULL AND (? IS NULL OR idare LIKE ?)
+           GROUP BY poz_no ORDER BY n DESC, poz_no LIMIT ?""",
+        (idare, f"%{idare}%" if idare else None, limit)).fetchall()
+    out = []
+    if bizim:
+        out += ["### Geçmiş analizlerdeki birim fiyatlar (ARŞİV)", "| Poz | Tanım | Birim | Kayıt | En düşük | Ortalama | En yüksek |",
+                "|---|---|---|---|---|---|---|"]
+        out += [f"| {r['poz_no']} | {r['tanim'] or ''} | {r['birim'] or ''} | {r['n']} | {r['mn']:.2f} | {r['ort']:.2f} | "
+                f"{r['mx']:.2f} |" for r in bizim]
+    if kurum:
+        out += ["", f"### Kurum birim fiyatları{' (' + idare + ')' if idare else ''} (ARŞİV, ihale sitesi)",
+                "| Poz | Tanım | Birim | Kayıt | Ortalama | Son | Kaynak |", "|---|---|---|---|---|---|---|"]
+        out += [f"| {r['poz_no']} | {r['tanim'] or ''} | {r['birim'] or ''} | {r['n']} | {r['ort']:.2f} | {r['son'] or ''} | "
+                f"{r['kaynak'] or ''} |" for r in kurum]
+    return "\n".join(out) or "Geçmiş birim fiyat yok (ilk analizler; veritabanı her analizle dolar)."
+
+
+def tutar_oku(v):
+    """'1.234.567,89 TL', '1234567.89', '%23,45' gibi site değerlerini sayıya çevirir."""
+    import re
+    s = re.sub(r"[^\d.,-]", "", str(v or ""))
+    if not s:
+        return None
+    if re.fullmatch(r"-?\d{1,3}(\.\d{3})+", s):
+        s = s.replace(".", "")
+    try:
+        return num(s)
+    except ValueError:
+        return None
+
+
+def site_sonuclari_yukle(con, liste, kaynak="ihale sitesi") -> int:
+    """Takip sitesinin kesinleşen sonuçlarındaki kazanan ve sözleşme bedelini katılımcı verisine yazar.
+
+    Site yalnızca kazananı verir: katılımcı sayısı bilinmez, `tenzilat` ve `rakip` bunu ayırır.
+    Yaklaşık maliyet yoksa sitedeki tenzilat oranından geri hesaplanır."""
+    n = 0
+    for r in liste or []:
+        kod, firma, bedel = r.get("ikn"), (r.get("kazanan") or "").strip(), tutar_oku(r.get("sozlesme_bedeli"))
+        if not kod or not firma or not bedel:
+            continue
+        ym = tutar_oku(r.get("yaklasik"))
+        tz = tutar_oku(r.get("tenzilat"))
+        if not ym and tz is not None and 0 <= tz < 100:
+            ym = round(bedel / (1 - tz / 100), 2)
+        con.execute("DELETE FROM katilimcilar WHERE ihale_kod=? AND kaynak=?", (kod, kaynak))
+        con.execute("INSERT INTO katilimcilar VALUES (?,?,?,?,?,?,?,?,?)",
+                    (kod, r.get("idare"), (r.get("ihale_tarihi") or "")[:10] or today(), ym, firma, bedel,
+                     "kazanan", kaynak, today()))
+        n += 1
+    return n
 
 
 def cmd_pursantaj_ort(con, a):
@@ -216,7 +296,7 @@ def cmd_baglam(con, a):
         print("\n## Bu idarenin geçmiş ihaleleri (site verisi)")
         for r in tz[:10]:
             kt = yuzde(r["kazanan"], r["ym"])
-            print(f"- {r['tarih']} {r['ihale_kod']}: {r['n']} katılımcı, kazanan tenzilat "
+            print(f"- {r['tarih']} {r['ihale_kod']}: {str(r['n']) + ' katılımcı' if r['diger'] else 'kazanan'}, kazanan tenzilat "
                   f"{'-' if kt is None else f'%{kt:.2f}'}")
         if not tz:
             print("- Site verisi yok; rakip, katılımcı ve tenzilat analizi sunulamaz")
@@ -284,7 +364,7 @@ def tenzilat_satirlari(con, idare=None, tur=None):
     """Her ihale için katılımcı sayısı, kazanan ve ortalama tenzilat (%)."""
     return con.execute(
         """SELECT k.ihale_kod, MAX(k.idare) idare, MAX(k.tarih) tarih, MAX(k.yaklasik_maliyet) ym,
-                  COUNT(*) n,
+                  COUNT(*) n, SUM(k.durum <> 'kazanan') diger,
                   MAX(CASE WHEN k.durum='kazanan' THEN k.teklif END) kazanan,
                   AVG(k.teklif) ort_teklif
            FROM katilimcilar k LEFT JOIN ihaleler i ON i.kod = k.ihale_kod
@@ -304,11 +384,14 @@ def cmd_tenzilat(con, a):
         return
     for r in rows:
         kt = yuzde(r["kazanan"], r["ym"])
-        print(f"- {r['tarih']} {r['ihale_kod']} | {r['idare']} | {r['n']} katılımcı | "
+        katilim = f"{r['n']} katılımcı" if r["diger"] else "katılımcı sayısı yok (site yalnızca kazananı verir)"
+        print(f"- {r['tarih']} {r['ihale_kod']} | {r['idare']} | {katilim} | "
               f"kazanan tenzilat: {'-' if kt is None else f'%{kt:.2f}'} | "
               f"ortalama tenzilat: %{yuzde(r['ort_teklif'], r['ym']):.2f}")
     kaz = [yuzde(r["kazanan"], r["ym"]) for r in rows if r["kazanan"] is not None]
-    print(f"\nÖzet: {len(rows)} ihale, ortalama katılımcı {sum(r['n'] for r in rows) / len(rows):.1f}"
+    tam = [r for r in rows if r["diger"]]
+    print(f"\nÖzet: {len(rows)} ihale"
+          + (f", ortalama katılımcı {sum(r['n'] for r in tam) / len(tam):.1f}" if tam else "")
           + (f", ortalama kazanan tenzilat %{sum(kaz) / len(kaz):.2f}" if kaz else ""))
 
 
