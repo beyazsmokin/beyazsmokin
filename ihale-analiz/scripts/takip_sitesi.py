@@ -113,13 +113,20 @@ def sadelestir(r: dict) -> dict:
 
 def _tarayici_ac(pw, profil: Path, gorunur: bool):
     profil.mkdir(parents=True, exist_ok=True)
+    indirme = profil.parent / "_indirilen"  # ilerleme yüzdesi için inen dosya burada izlenir
+    indirme.mkdir(exist_ok=True)
+    for f in indirme.iterdir():
+        f.unlink(missing_ok=True) if f.is_file() else None
     son = None
     for kanal in ("msedge", "chrome", None):  # bilgisayardaki tarayıcı; yoksa Playwright'ınki
         try:
-            return pw.chromium.launch_persistent_context(
+            ctx = pw.chromium.launch_persistent_context(
                 str(profil), channel=kanal, headless=not gorunur, locale="tr-TR",
+                downloads_path=str(indirme),
                 viewport=None if gorunur else {"width": 1280, "height": 900},
                 args=["--window-size=1150,850"] if gorunur else [])
+            ctx.indirme_klasoru = indirme
+            return ctx
         except Exception as e:
             son = e
     raise SiteHatasi(f"Edge ya da Chrome açılamadı: {son}")
@@ -395,6 +402,16 @@ def _kod_ve_indir(ctx, sayfa, hedef: Path, kod_iste, bildir) -> list[Path]:
     inenler = []
     def yakala(d):  # Playwright yerleşik işlevi dinleyici olarak kabul etmiyor
         inenler.append(d)
+    boyutlar = []  # indirilen dosyanın toplam boyutu (sunucu bildiriyorsa), ilerleme yüzdesi için
+
+    def yanit(y):
+        try:
+            b = y.headers
+            if "attachment" in (b.get("content-disposition") or "").lower() and b.get("content-length"):
+                boyutlar.append(int(b["content-length"]))
+        except Exception:
+            pass
+    ctx.on("response", yanit)
     sayfa.on("download", yakala)
     ctx.on("page", lambda p: p.on("download", yakala))
     sayfa.wait_for_timeout(1000)
@@ -444,6 +461,7 @@ def _kod_ve_indir(ctx, sayfa, hedef: Path, kod_iste, bildir) -> list[Path]:
                         k.press("Enter")
             sayfa.wait_for_timeout(1500)
         if inenler:
+            _ilerleme_bekle(sayfa, ctx, boyutlar, bildir)
             d = inenler[0]
             yol = hedef / (d.suggested_filename or "ihale-dokumani.zip")
             d.save_as(yol)
@@ -463,6 +481,31 @@ def _kod_ve_indir(ctx, sayfa, hedef: Path, kod_iste, bildir) -> list[Path]:
         pass
     raise SiteHatasi("EKAP sayfasında indirme düğmesi bulunamadı. Sayfanın kaydını aldım; "
                      "asistana 'indirme tanılama' diyerek inceletebilirsiniz.")
+
+
+def _ilerleme_bekle(sayfa, ctx, boyutlar: list, bildir, sure: float = 1800) -> None:
+    """İnen dosyanın büyüklüğünü izleyip 'İndiriliyor %45' bildirir; bitince döner."""
+    klasor = getattr(ctx, "indirme_klasoru", None)
+    son, onceki, durgun = time.time() + sure, -1, 0
+    while time.time() < son:
+        boyut = 0
+        try:
+            if klasor and klasor.is_dir():
+                boyut = max((f.stat().st_size for f in klasor.iterdir() if f.is_file()), default=0)
+        except OSError:
+            pass
+        toplam = boyutlar[-1] if boyutlar else 0
+        if toplam:
+            bildir(f"İndiriliyor %{min(99, int(100 * boyut / toplam))}")
+            if boyut >= toplam:
+                return
+        else:
+            bildir(f"İndiriliyor {boyut / 1048576:.1f} MB")
+        durgun = durgun + 1 if boyut == onceki and boyut > 0 else 0
+        if durgun >= 4:  # boyut bildirilmiyorsa: dosya bir süredir büyümüyor, bitmiştir
+            return
+        onceki = boyut
+        sayfa.wait_for_timeout(1000)
 
 
 def _ih_id_bul(ctx, ikn: str, kaynak_url: str | None = None):
