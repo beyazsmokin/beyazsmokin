@@ -305,6 +305,10 @@ async function ihaleler(kap, sorgu) {
   // Panel açılınca liste kendiliğinden gelir; yarım saatten eskiyse yenilenir
   const siteYukle = (tur) => api(`site/${tur}`).then((v) => {
     veri[tur] = v;
+    if (v.filtre && !Object.keys(S.siteFiltre[tur] || {}).length) {
+      S.siteFiltre[tur] = v.filtre;
+      if (tur === S.ihaleSekme) sekmeCiz();
+    }
     if (tur === S.ihaleSekme) siteCiz();
     if (!v.zaman || Date.now() - new Date(v.zaman).getTime() > 30 * 60 * 1000) siteGetir(tur);
   }).catch(() => siteGetir(tur));
@@ -1071,7 +1075,27 @@ api("siteler").then((x) => { S.siteBagli = x.siteler.length > 0; }).catch(() => 
 
 // Fare bağlantının üstündeyken pencerenin sol altında adres görünmesin: bağlantıların adresi
 // data-href'e taşınır, tıklama burada karşılanır (indirme, yeni pencere ve sayfa içi geçişler).
+const TIKLANABILIR = "[data-git], [data-ilan], [data-sonuc], [data-gun]";
+function erisilebilir(kok) {
+  if (!kok.querySelectorAll) return;
+  for (const x of kok.querySelectorAll(TIKLANABILIR)) {
+    if (!x.hasAttribute("tabindex")) x.tabIndex = 0;
+    if (x.matches("[data-gun]")) { x.setAttribute("role", "button"); x.setAttribute("aria-label", tarihYaz(x.dataset.gun, false)); }
+  }
+  for (const i of kok.querySelectorAll("input[placeholder]:not([aria-label]), select:not([aria-label])")) {
+    if (i.closest("label")) continue;
+    const ad = i.placeholder || i.options?.[0]?.textContent;
+    if (ad) i.setAttribute("aria-label", ad);
+  }
+}
+document.addEventListener("keydown", (ev) => {
+  if (ev.key !== "Enter" && ev.key !== " ") return;
+  const x = ev.target.closest?.(TIKLANABILIR);
+  if (x && x === ev.target) { ev.preventDefault(); x.click(); }
+});
+
 function baglantilariGizle(kok) {
+  erisilebilir(kok);
   for (const a of kok.querySelectorAll ? kok.querySelectorAll("a[href]") : []) {
     const h = a.getAttribute("href");
     if (h.startsWith("javascript:")) continue;

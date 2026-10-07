@@ -1,24 +1,24 @@
 :root {
-  --zemin: #f3f5f8; --yuzey: #ffffff; --yuzey2: #f7f8fb; --yazi: #172033; --ikincil: #5b6578; --soluk: #8a93a5;
-  --cizgi: #e1e5ec; --vurgu: #1d4f91; --vurgu-acik: #e6eefa; --amber: #b7791f; --amber-z: #fcf1de;
-  --yesil: #12805c; --yesil-z: #e2f4ec; --kirmizi: #b42318; --kirmizi-z: #fde9e7; --mor: #6941c6; --mor-z: #f0eafc;
+  --zemin: #f3f5f8; --yuzey: #ffffff; --yuzey2: #f7f8fb; --yazi: #172033; --ikincil: #4f586a; --soluk: #646d7e;
+  --cizgi: #e1e5ec; --vurgu: #1d4f91; --vurgu-acik: #e6eefa; --amber: #8a5a10; --amber-z: #fcf1de;
+  --yesil: #0b6b4c; --yesil-z: #e2f4ec; --kirmizi: #b42318; --kirmizi-z: #fde9e7; --mor: #6941c6; --mor-z: #f0eafc;
   --gri-z: #eceff4; --golge: 0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .08);
-  --yaricap: 12px; --kenar: 248px;
+  --yaricap: 12px; --kenar: 248px; --vurgu-ustu: #ffffff;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-tema="acik"]) {
-    --zemin: #0e121a; --yuzey: #161b25; --yuzey2: #1b2130; --yazi: #e6eaf2; --ikincil: #a1aabb; --soluk: #747e91;
+    --zemin: #0e121a; --yuzey: #161b25; --yuzey2: #1b2130; --yazi: #e6eaf2; --ikincil: #b3bccc; --soluk: #8e98ab;
     --cizgi: #283041; --vurgu: #7fb0ff; --vurgu-acik: #1a2a45; --amber: #f0b45b; --amber-z: #3a2c14;
     --yesil: #5fd3a5; --yesil-z: #12342a; --kirmizi: #ff8b80; --kirmizi-z: #3d1916; --mor: #b9a3ff; --mor-z: #282044;
-    --gri-z: #222a39; --golge: 0 1px 2px rgba(0, 0, 0, .4); color-scheme: dark;
+    --gri-z: #222a39; --golge: 0 1px 2px rgba(0, 0, 0, .4); --vurgu-ustu: #0b1220; color-scheme: dark;
   }
 }
 :root[data-tema="koyu"] {
-  --zemin: #0e121a; --yuzey: #161b25; --yuzey2: #1b2130; --yazi: #e6eaf2; --ikincil: #a1aabb; --soluk: #747e91;
+  --zemin: #0e121a; --yuzey: #161b25; --yuzey2: #1b2130; --yazi: #e6eaf2; --ikincil: #b3bccc; --soluk: #8e98ab;
   --cizgi: #283041; --vurgu: #7fb0ff; --vurgu-acik: #1a2a45; --amber: #f0b45b; --amber-z: #3a2c14;
   --yesil: #5fd3a5; --yesil-z: #12342a; --kirmizi: #ff8b80; --kirmizi-z: #3d1916; --mor: #b9a3ff; --mor-z: #282044;
-  --gri-z: #222a39; --golge: 0 1px 2px rgba(0, 0, 0, .4); color-scheme: dark;
+  --gri-z: #222a39; --golge: 0 1px 2px rgba(0, 0, 0, .4); --vurgu-ustu: #0b1220; color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -267,7 +267,7 @@ dialog .dugmeler { justify-content: flex-end; margin-top: 18px; }
     justify-content: center; font-family: inherit; cursor: pointer; }
   .alt-menu a.aktif, .alt-menu button.aktif { color: var(--vurgu); }
   .yeni-yuzen { display: grid; place-items: center; position: fixed; right: 16px; bottom: calc(76px + env(safe-area-inset-bottom));
-    z-index: 21; width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--vurgu); color: #fff;
+    z-index: 21; width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--vurgu); color: var(--vurgu-ustu);
     box-shadow: 0 6px 18px rgb(0 0 0 / .25); cursor: pointer; }
   .yeni-yuzen svg { width: 24px; height: 24px; }
   .dugme, .dugme.kucuk { min-height: 44px; }
@@ -318,7 +318,7 @@ a[data-href] { cursor: pointer; }
   transition: width .6s ease; }
 .dugme.indiriyor.belirsiz::before { width: 40%; animation: indirme-kayan 1.4s ease-in-out infinite; }
 @keyframes indirme-kayan { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
-.dugme.dosya-var { background: var(--yesil); border-color: var(--yesil); color: #fff; }
+.dugme.dosya-var { background: var(--yesil); border-color: var(--yesil); color: var(--vurgu-ustu); }
 .dugme.dosya-var:hover { filter: brightness(1.08); }
 @media (prefers-reduced-motion: reduce) { .dugme.indiriyor::before { transition: none; animation: none; } }
 .yeni-yuzen { display: none; }
@@ -335,3 +335,9 @@ a[data-href] { cursor: pointer; }
   .site-tablo td.nowrap:first-child { color: var(--ikincil); font-size: 12px; }
   .site-tablo td:last-child { position: static; box-shadow: none; background: none; margin-top: 6px; }
 }
+
+/* Klavye: tıklanabilir satırlar ve takvim günleri odaklanabilir */
+[data-git], [data-ilan], [data-sonuc], [data-gun], a[data-href] { outline-offset: -2px; }
+[data-git]:focus-visible, [data-ilan]:focus-visible, [data-sonuc]:focus-visible, [data-gun]:focus-visible,
+a[data-href]:focus-visible, .dugme:focus-visible, .cip:focus-visible { outline: 2px solid var(--vurgu); }
+.gorunmez { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
