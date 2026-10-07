@@ -43,6 +43,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import belge_metni
+import ofis
 import takip
 import vt
 import yz
@@ -356,7 +357,18 @@ class Motor:
                 tz = vt.tenzilat_satirlari(con, idare) if idare else []
                 n = con.execute("SELECT COUNT(*) FROM ihaleler WHERE idare LIKE ?",
                                 (f"%{idare}%",)).fetchone()[0] if idare else 0
-            return f"Bu idarenin {n} analizi, {len(tz)} sonuçlanmış ihale verisi var"
+            m = re.search(r"/goster/(\d+)", t.get("kaynak_url") or "")
+            ofis_sonuc = ofis.on_inceleme(t["ikn"] or self.kod, m.group(1) if m else None,
+                                          ayarlar(self.alan, "analiz").get("ofis_yolu"))
+            on["ofis"] = ofis_sonuc
+            ek = ""
+            if ofis_sonuc and not ofis_sonuc.get("hata"):
+                ym = ofis_sonuc.get("ym_gercek") or ofis_sonuc.get("ym_tahmini")
+                sd = (ofis_sonuc.get("simulasyon") or {}).get("sd_medyan")
+                ek = f"; İhale Ofisi: YM {ofis._tl(ym)}" + (f", SD medyan {ofis._tl(sd)}" if sd else "")
+            elif ofis_sonuc:
+                ek = f"; İhale Ofisi: {ofis_sonuc['hata']}"
+            return f"Bu idarenin {n} analizi, {len(tz)} sonuçlanmış ihale verisi var{ek}"
         self.calistir_adim("o2", gecmis)
 
         def puan():
@@ -391,6 +403,8 @@ class Motor:
                      ("Kural tabanlı puan (tara.py)", f"{on['puan']} · {'; '.join(on['neden']) or '-'} · "
                                                      f"kural kararı: {kural[0]}"),
                      ("Geçmiş (vt.py baglam)", on["baglam"]), ("Tenzilat", on["tenzilat"]), ("Rakipler", on["rakip"]),
+                     ("Yaklaşık maliyet, katılımcı ve sınır değer (İhale Ofisi)",
+                      "\n".join(ofis.md(on["ofis"])) if on.get("ofis") else "İhale Ofisi bu bilgisayarda yok"),
                      ("Firma profili", self.hafiza("firma-profili.md")),
                      ("Öğrenilenler", self.hafiza("ogrenilenler.md"))])
             except yz.YzHatasi as e:
@@ -449,6 +463,8 @@ class Motor:
               *([f"- {n}" for n in on["neden"]] or ["- Eşleşen il, anahtar kelime ya da tercih yok"])]
         if on.get("yz"):
             md += ["\n## Değerlendirme\n", on["yz"]]
+        if on.get("ofis"):
+            md += ofis.md(on["ofis"])
         md += ["\n## Bu idarenin geçmişi, rakip ve tenzilat\n", "### Tenzilat (ARŞİV)\n", on["tenzilat"],
                "\n### Sık giren rakipler (ARŞİV)\n", on["rakip"],
                "\n## Sonraki adım\n",
