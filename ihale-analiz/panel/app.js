@@ -87,6 +87,7 @@ const isoGun = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,
 const boyut = (b) => b < 1024 ? b + " B" : b < 1048576 ? (b / 1024).toFixed(0) + " KB" : (b / 1048576).toFixed(1) + " MB";
 const durumRozet = (d) => `<span class="rozet-d d-${e(d)}">${e(S.sabit.durumlar[d] || d)}</span>`;
 const kodUrl = (kod) => encodeURIComponent(kod);
+const tlBosluk = (v) => v ? String(v).replace(/\s*₺$/, " ₺") : v;  // "13.150.000,00₺" -> "13.150.000,00 ₺"
 
 function kalanYaz(iso) {
   if (!iso) return "";
@@ -290,16 +291,16 @@ async function ihaleler(kap, sorgu) {
         ${l.map((r, i) => `<tr data-ilan="${i}"><td class="nowrap">${e(r.ikn)}</td><td class="nowrap">${tarihYaz(r.ihale_tarihi)}</td>
           <td class="gizle-mobil">${e(r.idare || "—")}</td><td><b>${e(r.ad)}</b></td><td class="gizle-mobil">${e(r.il || "")}</td>
           <td class="gizle-mobil">${e(r.benzer_is || "")}</td><td class="nowrap">${kalanHucre(r.ihale_tarihi)}</td>
-          <td class="nowrap">${takipKodu(r.ikn) ? '<span class="rozet-d d-takipte">Takipte</span>' : `<button class="dugme kucuk" data-ilan-al="${i}">Takibe ekle</button>`}
+          <td class="nowrap">${takipKodu(r.ikn) ? '<span class="rozet-d d-izleniyor">Takipte</span>' : `<button class="dugme kucuk" data-ilan-al="${i}">Takibe ekle</button>`}
             ${/DT/.test(r.ikn || "") ? "" : `<button class="dugme kucuk" data-ilan-indir="${i}" title="EKAP ihale dosyasını indir">Dosya</button>`}</td></tr>`).join("")}
         </tbody></table></div>`;
     } else if (l.length) {
       tablo = `<div class="tablo-kap"><table class="tablo site-tablo"><thead><tr>
         <th>İKN</th>${siraBaslik(tur, "ihale_tarihi", "İhale tarihi")}${siraBaslik(tur, "idare", "İdare", "gizle-mobil")}${siraBaslik(tur, "ad", "İhale adı")}${siraBaslik(tur, "il", "Şehir", "gizle-mobil")}
         <th>Kazanan</th><th class="sayi">Sözleşme bedeli</th><th class="sayi">Tenzilat</th></tr></thead><tbody>
-        ${l.map((r, i) => `<tr data-sonuc="${i}"><td class="nowrap">${e(r.ikn)}${takipKodu(r.ikn) ? ' <span class="rozet-d d-takipte">Takipte</span>' : ""}</td>
+        ${l.map((r, i) => `<tr data-sonuc="${i}"><td class="nowrap">${e(r.ikn)}${takipKodu(r.ikn) ? ' <span class="rozet-d d-izleniyor">Takipte</span>' : ""}</td>
           <td class="nowrap">${tarihYaz(r.ihale_tarihi)}</td><td class="gizle-mobil">${e(r.idare || "—")}</td><td><b>${e(r.ad)}</b></td>
-          <td class="gizle-mobil">${e(r.il || "")}</td><td>${e(r.kazanan || "—")}</td><td class="sayi nowrap">${e(r.sozlesme_bedeli || "—")}</td>
+          <td class="gizle-mobil">${e(r.il || "")}</td><td>${e(r.kazanan || "—")}</td><td class="sayi nowrap">${e(tlBosluk(r.sozlesme_bedeli) || "—")}</td>
           <td class="sayi nowrap">${r.tenzilat ? "%" + e(r.tenzilat) : "—"}</td></tr>`).join("")}
         </tbody></table></div>`;
     }
@@ -960,7 +961,7 @@ async function taramaDetay(kap) {
     const var_ = kodlar.has(ikn) || kodlar.has(ikn.replace(/\//g, "-"));
     return `<tr><td class="sayi"><b>${e(r.skor)}</b></td><td><b>${e(r.konu)}</b><small>${e(ikn)} · ${e(r.il)} · ${e(TUR_AD[r.tur] || r.tur)}</small>
       <small>${e(r.neden)}</small></td><td class="gizle-mobil">${e(r.idare)}</td><td class="sayi gizle-mobil">${/^[\d.,]+$/.test(r.yaklasik || "") ? para(Number(String(r.yaklasik).replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", "."))) : e(r.yaklasik)}</td><td>${e(r.son_tarih)}</td>
-      <td>${var_ ? '<span class="rozet-d d-takipte">Takipte</span>' : `<button class="dugme kucuk ana-d" data-takibe="${i}">Takibe al</button>`}</td></tr>`;
+      <td>${var_ ? '<span class="rozet-d d-izleniyor">Takipte</span>' : `<button class="dugme kucuk ana-d" data-takibe="${i}">Takibe al</button>`}</td></tr>`;
   }).join("")}</tbody></table></div></div>`;
   kap.onclick = (ev) => {
     const b = ev.target.closest("[data-takibe]");
@@ -1091,7 +1092,7 @@ function sonucPenceresi(r) {
   pen.innerHTML = `<form method="dialog" class="ilan-pencere"><h2>İhale sonucu</h2>
     <dl class="bilgi">${satir("İhale kayıt no", e(r.ikn))}${satir("Kurum", e(r.idare))}${satir("İhale adı", `<b>${e(r.ad)}</b>`)}
       ${satir("İhale tarihi", tarihYaz(r.ihale_tarihi))}${satir("Şehir", e(r.il))}${satir("Kazanan", `<b>${e(r.kazanan)}</b>`)}
-      ${satir("Sözleşme bedeli", e(r.sozlesme_bedeli))}${satir("Yaklaşık maliyet", r.yaklasik ? para(r.yaklasik) : "")}
+      ${satir("Sözleşme bedeli", e(tlBosluk(r.sozlesme_bedeli)))}${satir("Yaklaşık maliyet", r.yaklasik ? para(r.yaklasik) : "")}
       ${satir("Tenzilat", r.tenzilat ? "%" + e(r.tenzilat) : "")}${satir("Sonuç ilanı", e(r.sonuc_tarihi))}</dl>
     <div class="dugmeler"><a class="dugme" href="${e(r.kaynak_url)}" target="_blank" rel="noopener">Sitede aç</a>
       <button class="dugme ana-d" value="kapat">Kapat</button></div></form>`;
