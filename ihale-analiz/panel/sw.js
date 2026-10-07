@@ -1,5 +1,5 @@
 // İhale Analiz paneli: uygulama kabuğunu önbellekte tutar, sunucu kapalıyken son verileri gösterir.
-const SURUM = "ihale-panel-v3";
+const SURUM = "ihale-panel-v4";
 const KABUK = ["/", "/app.js", "/stil.css", "/manifest.webmanifest", "/ikon-192.png"];
 // Sunucu kapalıyken gösterilecek son veriler: yalnızca bu uçlar saklanır (dosyalar ve site verisi değil)
 const SAKLANAN = /^\/api\/(ozet|sabitler|ihaleler|ajanda|siteler|ogrenme|taramalar)(\/|$)/;
