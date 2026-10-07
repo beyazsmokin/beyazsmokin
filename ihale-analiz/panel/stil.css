@@ -302,3 +302,15 @@ dialog .dugmeler { justify-content: flex-end; margin-top: 18px; }
 .site-tablo td:nth-child(3) { max-width: 240px; color: var(--ikincil); }
 .dugme.kucuk { padding: 4px 10px; font-size: 12.5px; min-height: 0; }
 a[data-href] { cursor: pointer; }
+
+/* İhale dosyası indirme düğmesi: içi yüzdeyle dolar, bitince yeşil */
+.dugme.indiriyor { position: relative; overflow: hidden; isolation: isolate; opacity: 1; cursor: progress;
+  color: var(--metin); border-color: var(--vurgu); }
+.dugme.indiriyor::before { content: ""; position: absolute; inset: 0; z-index: -1;
+  width: var(--ilerleme, 0%); background: color-mix(in srgb, var(--vurgu) 35%, transparent);
+  transition: width .6s ease; }
+.dugme.indiriyor.belirsiz::before { width: 40%; animation: indirme-kayan 1.4s ease-in-out infinite; }
+@keyframes indirme-kayan { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+.dugme.dosya-var { background: var(--yesil); border-color: var(--yesil); color: #fff; }
+.dugme.dosya-var:hover { filter: brightness(1.08); }
+@media (prefers-reduced-motion: reduce) { .dugme.indiriyor::before { transition: none; animation: none; } }

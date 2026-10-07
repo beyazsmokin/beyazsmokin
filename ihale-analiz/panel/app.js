@@ -333,13 +333,17 @@ async function ihaleler(kap, sorgu) {
   const dosyaIndir = async (r, dugme) => {
     dugme.disabled = true;
     const metin = dugme.textContent;
-    dugme.textContent = "İndiriliyor…";
+    indirmeDugmesi(dugme, "Hazırlanıyor…");
     try {
       const kod = takipKodu(r.ikn) || (await takibeAl(r));
       bildir((await ihaleDosyasiIndir(kod, dugme)).mesaj);
-      S.detaySekme = "dosyalar";
-      location.hash = `#/ihale/${kodUrl(kod)}`;
-    } catch (h) { bildir(h.message, true); dugme.disabled = false; dugme.textContent = metin; }
+      dosyaVarDugmesi(dugme, kod);
+    } catch (h) {
+      bildir(h.message, true);
+      dugme.disabled = false;
+      dugme.classList.remove("indiriyor", "belirsiz");
+      dugme.textContent = metin;
+    }
   };
   const ilanPenceresi = (r) => {
     const pen = $("#pencere");
@@ -482,6 +486,34 @@ function ihaleFormu(t = null, onEk = {}) {
 }
 
 // EKAP doküman sayfasındaki güvenlik kodu resmini gösterir; kodu kullanıcı yazar.
+// İndirme düğmesi: indirirken içi yüzdeyle dolar, bitince yeşil "Dosyayı aç" olur
+function indirmeDugmesi(d, durum) {
+  d.classList.add("indiriyor");
+  const m = /%(\d+)/.exec(durum || "");
+  if (m) d.style.setProperty("--ilerleme", `${m[1]}%`);
+  else d.classList.toggle("belirsiz", /MB|İndiriliyor/.test(durum || ""));
+  d.textContent = durum;
+}
+
+function dosyaVarDugmesi(d, kod) {
+  d.classList.remove("indiriyor", "belirsiz");
+  d.classList.add("dosya-var");
+  d.style.removeProperty("--ilerleme");
+  d.disabled = false;
+  d.textContent = "Dosyayı aç";
+  d.dataset.dosyaAc = kod;
+  delete d.dataset.eylem;
+  delete d.dataset.ilanIndir;
+}
+
+document.addEventListener("click", async (ev) => {
+  const d = ev.target.closest("[data-dosya-ac]");
+  if (!d) return;
+  ev.stopPropagation();
+  try { await api("klasor", { method: "POST", govde: { yol: `İhaleler/${d.dataset.dosyaAc}/kaynak` } }); }
+  catch (h) { bildir(h.message, true); }
+}, true);
+
 async function ihaleDosyasiIndir(kod, dugme = null) {
   bildir("İhale dosyası hazırlanıyor. EKAP güvenlik kodu birazdan burada sorulacak.");
   let bitti = false;
@@ -491,7 +523,7 @@ async function ihaleDosyasiIndir(kod, dugme = null) {
     while (!bitti) {
       await new Promise((r) => setTimeout(r, 1000));
       const k = await api("site/kod").catch(() => ({}));
-      if (dugme && k.durum) dugme.textContent = k.durum;  // "İndiriliyor %45"
+      if (dugme && k.durum) indirmeDugmesi(dugme, k.durum);  // "İndiriliyor %45"
       if (k.bekliyor && k.resim !== gosterilen) {
         gosterilen = k.resim;
         const pen = $("#pencere");
@@ -547,7 +579,8 @@ async function ihaleDetay(kap, sorgu) {
     <span>${durumRozet(t.durum)}</span>${t.ihale_tarihi ? `<span>İhale: <b>${tarihYaz(t.ihale_tarihi)}</b> ${kapali ? "" : kalanYaz(t.ihale_tarihi)}</span>` : ""}</div></div>
     <div class="dugmeler">
       ${kapali ? "" : `<button class="dugme ana-d" data-eylem="analiz" ${surecte ? "disabled" : ""}>${surecte ? "Analiz sürüyor" : v.dosyalar.kaynak.length ? (md ? "Yeniden analiz et" : "Detaylı analizi başlat") : "Ön incelemeyi başlat"}</button>`}
-      ${/DT/.test(t.ikn || t.kod) ? "" : '<button class="dugme" data-eylem="dosya-indir">İhale dosyasını indir</button>'}
+      ${/DT/.test(t.ikn || t.kod) ? "" : v.dosyalar.kaynak.length ? `<button class="dugme dosya-var" data-dosya-ac="${e(kod)}">Dosyayı aç</button>`
+        : '<button class="dugme" data-eylem="dosya-indir">İhale dosyasını indir</button>'}
       <button class="dugme" data-eylem="duzenle">Düzenle</button>
       <button class="dugme" data-eylem="klasor">Klasörü aç</button>
       <button class="dugme tehlike" data-eylem="sil">Takipten çıkar</button>
@@ -665,12 +698,18 @@ async function ihaleDetay(kap, sorgu) {
       } else if (ey === "dosya-indir") {
         const d = ev.target.closest("button");
         d.disabled = true;
-        d.textContent = "İndiriliyor…";
+        indirmeDugmesi(d, "Hazırlanıyor…");
         try {
           bildir((await ihaleDosyasiIndir(kod, d)).mesaj);
+          dosyaVarDugmesi(d, kod);
           S.detaySekme = "dosyalar";
-          yonlendir();
-        } finally { d.disabled = false; d.textContent = "İhale dosyasını indir"; }
+          setTimeout(yonlendir, 1500);
+        } catch (h) {
+          d.disabled = false;
+          d.classList.remove("indiriyor", "belirsiz");
+          d.textContent = "İhale dosyasını indir";
+          throw h;
+        }
       } else if (ey === "duzenle") ihaleFormu(t);
       else if (ey === "klasor") await api("klasor", { method: "POST", govde: { yol: `İhaleler/${kod}` } });
       else if (ey === "sil") {
