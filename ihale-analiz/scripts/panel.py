@@ -360,9 +360,32 @@ class Uygulama:
                             eklenen.append(r["ikn"])
                         except ValueError:
                             pass
+                    baslayan = self.on_inceleme_tamamla(con)
             finally:
                 con.close()
-        return {"sitede": len(uzak), "eklenen": eklenen}
+        return {"sitede": len(uzak), "eklenen": eklenen, "on_inceleme": baslayan}
+
+    def on_inceleme_tamamla(self, con, en_cok: int = 2) -> list[str]:
+        """Takip edilen ama ön incelemesi (ya da raporu) olmayan açık ihalelerin ön incelemesini başlatır.
+        Bilgisayarı yormamak için her eşitlemede en çok `en_cok` ihale; kalanlar sonraki eşitlemede."""
+        import motor
+        gun, baslayan = date.today().isoformat(), []
+        for t in takip.liste(con):
+            if len(baslayan) >= en_cok:
+                break
+            if t["durum"] in takip.KAPALI or t["durum"] in ("analizde", "hesaplanacak", "rapor_hazir"):
+                continue
+            if (t["ihale_tarihi"] or "9")[:10] < gun:
+                continue
+            klasor = takip.ihale_klasoru(self.alan, t["kod"])
+            if motor.calisiyor(klasor) or (klasor.is_dir() and any(klasor.glob("* Rapor.md"))):
+                continue
+            try:
+                analiz_baslat(con, self.alan, t["kod"], "on")
+                baslayan.append(t["kod"])
+            except Hata:
+                pass
+        return baslayan
 
     def site_takip(self, ikn: str | None, ekle: bool) -> str:
         """Panelde takibe alınan ya da bırakılan ihaleyi sitede de günceller; hata paneli durdurmaz."""
