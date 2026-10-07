@@ -23,6 +23,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
+html { scrollbar-gutter: stable; }
 body { background: var(--zemin); color: var(--yazi); font: 14.5px/1.5 "Segoe UI", system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased; }
 a { color: var(--vurgu); }
@@ -291,7 +292,7 @@ dialog .dugmeler { justify-content: flex-end; margin-top: 18px; }
 .site-tablo td, .site-tablo th { vertical-align: middle; }
 .site-tablo .nowrap, .site-tablo td:last-child { white-space: nowrap; }
 .site-tablo tbody tr { cursor: pointer; }
-.rozet-d.d-takipte { background: var(--yesil-z); color: var(--yesil); }
+.rozet-d.d-izleniyor { background: var(--yesil-z); color: var(--yesil); }
 .ilan-pencere .bilgi { margin: 8px 0 16px; }
 
 .izgara.k3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
