@@ -139,6 +139,8 @@ async function yonlendir() {
       tarama: taramaDetay, ogrenme, ayarlar };
     await (sayfalar[sayfa] || gosterge)(kap, sorgu);
     if (sorgu.get("yeni")) ihaleFormu();
+    // İki satırda kesilen başlıkların tamamı üzerine gelince görünür
+    $$(".satir .govde b:not([title])", kap).forEach((b) => { b.title = b.textContent.trim(); });
   } catch (h) {
     kap.innerHTML = `<div class="kart bos">${e(h.message)}</div>`;
   }
@@ -172,7 +174,7 @@ async function gosterge(kap) {
     <div class="izgara" style="align-content:start">
       <div class="kart"><h2>Analiz süreci</h2>
         <div class="liste">${o.analizde.length ? o.analizde.map((a) => `
-          <a class="satir" href="#/ihale/${kodUrl(a.kod)}"><div class="govde"><b>${e(a.ad || a.kod)}</b>
+          <a class="satir" href="#/ihale/${kodUrl(a.kod)}"><div class="govde"><b title="${e(a.ad || a.kod)}">${e(a.ad || a.kod)}</b>
           <small>${a.aktif ? e(a.aktif) + " çalışıyor" : a.durum === "hesaplanacak" ? "Kuyrukta bekliyor" : "Analizde"}</small>
           <div class="ilerleme" style="margin-top:6px"><i style="width:${a.yuzde}%"></i></div></div>
           <span class="kalan">%${a.yuzde}</span></a>`).join("") : '<div class="bos">Şu an analiz edilen ihale yok.</div>'}</div>
@@ -191,7 +193,7 @@ function olaySatir(o) {
   const tur = S.sabit.etkinlik_turleri[o.tur] || o.tur;
   const hedef = o.kod ? `#/ihale/${kodUrl(o.kod)}` : "#/ajanda";
   return `<a class="satir" href="${hedef}">${tarihKutu(o.tarih, o.tur === "ihale")}
-    <div class="govde"><b>${e(o.baslik)}</b><small>${e(tur)}${o.saat ? " · " + e(o.saat) : ""}${o.aciklama ? " · " + e(o.aciklama) : ""}</small></div>
+    <div class="govde"><b title="${e(o.baslik)}">${e(o.baslik)}</b><small>${e(tur)}${o.saat ? " · " + e(o.saat) : ""}${o.aciklama ? " · " + e(o.aciklama) : ""}</small></div>
     ${kalanYaz(o.tarih)}</a>`;
 }
 
@@ -218,6 +220,9 @@ async function ihaleler(kap, sorgu) {
     return t && t.kod;
   };
   const kalanHucre = (iso) => iso ? kalanYaz(iso) : "";
+  // Tarih hücresi: gün üstte, saat ve kalan gün altta; dar sütunda kesilmez
+  const tarihHucre = (iso, kalan = true) => iso ? `${tarihYaz(iso, false)}<small>${iso.slice(11, 16)}${kalan ? " " + kalanYaz(iso) : ""}</small>` : "—";
+  const kisa = (v, sinif = "") => `<span class="kirp ${sinif}" title="${e(v)}">${e(v)}</span>`;
   const veri = { ilanlar: { liste: [] }, sonuclar: { liste: [] } };
   const ILLER = ["ADANA", "ADIYAMAN", "AFYONKARAHİSAR", "AĞRI", "AKSARAY", "AMASYA", "ANKARA", "ANTALYA", "ARDAHAN", "ARTVİN", "AYDIN",
     "BALIKESİR", "BARTIN", "BATMAN", "BAYBURT", "BİLECİK", "BİNGÖL", "BİTLİS", "BOLU", "BURDUR", "BURSA", "ÇANAKKALE", "ÇANKIRI",
@@ -253,11 +258,10 @@ async function ihaleler(kap, sorgu) {
       .filter((t) => !ara || [t.kod, t.ad, t.idare, t.il].some((v) => (v || "").toLocaleLowerCase("tr").includes(ara)))
       .sort((a, b) => (a.ihale_tarihi || "9").localeCompare(b.ihale_tarihi || "9"));
     $("#ihale-tablo").innerHTML = s.length ? `<div class="tablo-kap"><table class="tablo site-tablo"><thead><tr>
-      <th>İKN</th><th>İhale tarihi</th><th class="gizle-mobil">İdare</th><th>İhale adı</th><th class="gizle-mobil">Şehir</th><th>Kalan</th><th>Durum</th></tr></thead><tbody>
+      <th>İKN</th><th>İhale tarihi</th><th class="gizle-mobil">İdare</th><th>İhale adı</th><th class="gizle-mobil">Şehir</th><th>Durum</th></tr></thead><tbody>
       ${s.map((t) => `<tr data-git="#/ihale/${kodUrl(t.kod)}"><td class="nowrap">${e(t.ikn || t.kod)}</td>
-        <td class="nowrap">${tarihYaz(t.ihale_tarihi)}</td><td class="gizle-mobil">${e(t.idare || "—")}</td>
-        <td><b>${e(t.ad || t.kod)}</b></td><td class="gizle-mobil">${e(t.il || "")}</td>
-        <td class="nowrap">${t.ihale_tarihi && !S.sabit.kapali.includes(t.durum) ? kalanHucre(t.ihale_tarihi) : ""}</td>
+        <td class="nowrap">${tarihHucre(t.ihale_tarihi, !S.sabit.kapali.includes(t.durum))}</td><td class="gizle-mobil c-idare">${kisa(t.idare || "—")}</td>
+        <td class="c-ad"><b>${e(t.ad || t.kod)}</b></td><td class="gizle-mobil">${e(t.il || "")}</td>
         <td>${durumRozet(t.durum)}</td></tr>`).join("")}
       </tbody></table></div>` : `<div class="bos">${liste.length ? "Bu filtrede ihale yok." : "Takip listeniz boş. İlanlardan <b>Takibe ekle</b> dediğiniz ihaleler burada ve sitedeki takip listenizde görünür. <a class=\"dugme kucuk ana-d\" href=\"#/ilanlar\">İhale ilanlarına git</a>"}</div>`;
     $$(".cip[data-filtre]", kap).forEach((c) => {
@@ -287,21 +291,21 @@ async function ihaleler(kap, sorgu) {
     if (l.length && tur === "ilanlar") {
       tablo = `<div class="tablo-kap"><table class="tablo site-tablo"><thead><tr>
         <th>İKN</th>${siraBaslik(tur, "ihale_tarihi", "İhale tarihi")}${siraBaslik(tur, "idare", "İdare", "gizle-mobil")}${siraBaslik(tur, "ad", "İhale adı")}${siraBaslik(tur, "il", "Şehir", "gizle-mobil")}
-        <th class="gizle-mobil">Benzer iş</th><th>Kalan</th><th></th></tr></thead><tbody>
-        ${l.map((r, i) => `<tr data-ilan="${i}"><td class="nowrap">${e(r.ikn)}</td><td class="nowrap">${tarihYaz(r.ihale_tarihi)}</td>
-          <td class="gizle-mobil">${e(r.idare || "—")}</td><td><b>${e(r.ad)}</b></td><td class="gizle-mobil">${e(r.il || "")}</td>
-          <td class="gizle-mobil">${e(r.benzer_is || "")}</td><td class="nowrap">${kalanHucre(r.ihale_tarihi)}</td>
+        <th class="gizle-orta">Benzer iş</th><th></th></tr></thead><tbody>
+        ${l.map((r, i) => `<tr data-ilan="${i}"><td class="nowrap">${e(r.ikn)}</td><td class="nowrap">${tarihHucre(r.ihale_tarihi)}</td>
+          <td class="gizle-mobil c-idare">${kisa(r.idare || "—")}</td><td class="c-ad"><b>${e(r.ad)}</b></td><td class="gizle-mobil">${e(r.il || "")}</td>
+          <td class="gizle-orta c-benzer">${kisa(r.benzer_is || "", "iki")}</td>
           <td class="nowrap">${takipKodu(r.ikn) ? '<span class="rozet-d d-izleniyor">Takipte</span>' : `<button class="dugme kucuk" data-ilan-al="${i}">Takibe ekle</button>`}
             ${/DT/.test(r.ikn || "") ? "" : `<button class="dugme kucuk" data-ilan-indir="${i}" title="EKAP ihale dosyasını indir">Dosya</button>`}</td></tr>`).join("")}
         </tbody></table></div>`;
     } else if (l.length) {
       tablo = `<div class="tablo-kap"><table class="tablo site-tablo"><thead><tr>
-        <th>İKN</th>${siraBaslik(tur, "ihale_tarihi", "İhale tarihi")}${siraBaslik(tur, "idare", "İdare", "gizle-mobil")}${siraBaslik(tur, "ad", "İhale adı")}${siraBaslik(tur, "il", "Şehir", "gizle-mobil")}
+        <th>İKN</th>${siraBaslik(tur, "ihale_tarihi", "İhale tarihi")}${siraBaslik(tur, "idare", "İdare", "gizle-mobil")}${siraBaslik(tur, "ad", "İhale adı")}${siraBaslik(tur, "il", "Şehir", "gizle-orta")}
         <th>Kazanan</th><th class="sayi">Sözleşme bedeli</th><th class="sayi">Tenzilat</th></tr></thead><tbody>
         ${l.map((r, i) => `<tr data-sonuc="${i}"><td class="nowrap">${e(r.ikn)}${takipKodu(r.ikn) ? ' <span class="rozet-d d-izleniyor">Takipte</span>' : ""}</td>
-          <td class="nowrap">${tarihYaz(r.ihale_tarihi)}</td><td class="gizle-mobil">${e(r.idare || "—")}</td><td><b>${e(r.ad)}</b></td>
-          <td class="gizle-mobil">${e(r.il || "")}</td><td>${e(r.kazanan || "—")}</td><td class="sayi nowrap">${e(tlBosluk(r.sozlesme_bedeli) || "—")}</td>
-          <td class="sayi nowrap">${r.tenzilat ? "%" + e(r.tenzilat) : "—"}</td></tr>`).join("")}
+          <td class="nowrap">${tarihHucre(r.ihale_tarihi, false)}</td><td class="gizle-mobil c-idare">${kisa(r.idare || "—")}</td><td class="c-ad"><b>${e(r.ad)}</b></td>
+          <td class="gizle-orta">${e(r.il || "")}</td><td class="c-kazanan">${kisa(r.kazanan || "—")}</td><td class="sayi nowrap" data-ad="Sözleşme bedeli">${e(tlBosluk(r.sozlesme_bedeli) || "—")}</td>
+          <td class="sayi nowrap" data-ad="Tenzilat">${r.tenzilat ? "%" + e(r.tenzilat) : "—"}</td></tr>`).join("")}
         </tbody></table></div>`;
     }
     kutu.innerHTML = (mesaj ? `<p class="not">${e(mesaj)}</p>` : "") + tablo +
@@ -604,7 +608,8 @@ async function ihaleDetay(kap, sorgu) {
   const kod = yolBilgisi().parca[1];
   const v = await api(`ihaleler/${kodUrl(kod)}`);
   const t = v.ihale;
-  baslik(t.ad || t.kod);
+  baslik(t.ikn || t.kod);
+  document.title = `${t.ad || t.kod} · İhale Analiz`;
   if (sorgu.get("sekme")) S.detaySekme = sorgu.get("sekme");
   const rapor = v.dosyalar.raporlar;
   const html = rapor.find((r) => r.ad.endsWith(" Rapor.html"));
@@ -871,7 +876,7 @@ function olaySatirAjanda(o) {
   const tur = S.sabit.etkinlik_turleri[o.tur] || o.tur;
   const ad = o.ihale_ad && o.tur !== "ihale" && o.tur !== "hatirlatma" ? ` · ${o.ihale_ad}` : "";
   return `<div class="satir">${tarihKutu(o.tarih, o.tur === "ihale")}<div class="govde">
-    <b>${o.kod ? `<a href="#/ihale/${kodUrl(o.kod)}">${e(o.baslik)}</a>` : e(o.baslik)}</b>
+    <b title="${e(o.baslik)}">${o.kod ? `<a href="#/ihale/${kodUrl(o.kod)}">${e(o.baslik)}</a>` : e(o.baslik)}</b>
     <small>${e(tur)}${o.saat ? " · " + e(o.saat) : ""}${e(ad)}${o.aciklama ? " · " + e(o.aciklama) : ""}</small></div>
     ${o.tamam ? '<span class="kalan">Tamam</span>' : kalanYaz(o.tarih)}
     ${duzenlenir ? `<button class="dugme kucuk" data-tamam="${o.id}" data-deger="${o.tamam ? 0 : 1}">${o.tamam ? "Geri al" : "Tamam"}</button>` : ""}</div>`;
@@ -954,13 +959,13 @@ async function taramaDetay(kap) {
     return;
   }
   kap.innerHTML = `<div class="araclar"><a class="dugme" href="#/taramalar">‹ Taramalar</a><span class="not">Skor; firma profili, filtreler ve beğen/reddet geçmişinizden hesaplanır.</span></div>
-  <div class="kart" style="padding:6px 8px"><div class="tablo-kap"><table class="tablo"><thead><tr><th class="sayi">Skor</th><th>İhale</th>
+  <div class="kart" style="padding:6px 8px"><div class="tablo-kap"><table class="tablo site-tablo"><thead><tr><th class="sayi">Skor</th><th>İhale</th>
   <th class="gizle-mobil">İdare</th><th class="sayi gizle-mobil">Yaklaşık maliyet</th><th>Son tarih</th><th></th></tr></thead><tbody>
   ${t.satirlar.map((r, i) => {
     const ikn = r.ikn || "";
     const var_ = kodlar.has(ikn) || kodlar.has(ikn.replace(/\//g, "-"));
-    return `<tr><td class="sayi"><b>${e(r.skor)}</b></td><td><b>${e(r.konu)}</b><small>${e(ikn)} · ${e(r.il)} · ${e(TUR_AD[r.tur] || r.tur)}</small>
-      <small>${e(r.neden)}</small></td><td class="gizle-mobil">${e(r.idare)}</td><td class="sayi gizle-mobil">${/^[\d.,]+$/.test(r.yaklasik || "") ? para(Number(String(r.yaklasik).replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", "."))) : e(r.yaklasik)}</td><td>${e(r.son_tarih)}</td>
+    return `<tr><td class="sayi" data-ad="Skor"><b>${e(r.skor)}</b></td><td class="c-ad"><b>${e(r.konu)}</b><small>${e(ikn)} · ${e(r.il)} · ${e(TUR_AD[r.tur] || r.tur)}</small>
+      <small>${e(r.neden)}</small></td><td class="gizle-mobil">${e(r.idare)}</td><td class="sayi gizle-mobil">${/^[\d.,]+$/.test(r.yaklasik || "") ? para(Number(String(r.yaklasik).replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", "."))) : e(r.yaklasik)}</td><td class="nowrap" data-ad="Son tarih">${e(r.son_tarih)}</td>
       <td>${var_ ? '<span class="rozet-d d-izleniyor">Takipte</span>' : `<button class="dugme kucuk ana-d" data-takibe="${i}">Takibe al</button>`}</td></tr>`;
   }).join("")}</tbody></table></div></div>`;
   kap.onclick = (ev) => {
