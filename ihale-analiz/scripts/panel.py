@@ -729,6 +729,28 @@ def calisiyor_mu(port: int) -> bool:
         return False
 
 
+def _slack_baslat(alan: Path) -> None:
+    """Slack token'ları varsa ihale mühendisi botunu arka planda başlatır."""
+    try:
+        import keyring  # type: ignore
+        token = keyring.get_password("ihale-analiz-slack", "SLACK_BOT_TOKEN")
+    except Exception:
+        token = None
+    token = token or os.environ.get("SLACK_BOT_TOKEN")
+    if not token:
+        return  # token yok, sessizce geç
+    bot_betik = Path(__file__).resolve().parent / "slack_bot.py"
+    if not bot_betik.exists():
+        return
+    ek = {"creationflags": 0x00000008 | 0x00000200} if sys.platform == "win32" else {"start_new_session": True}
+    subprocess.Popen(
+        [pythonw(), str(bot_betik), "--alan", str(alan)],
+        cwd=str(alan), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL, **ek,
+    )
+    print("Slack botu arka planda başlatıldı.")
+
+
 def baslat(alan: Path, port: int, tarayici: bool) -> None:
     adres = f"http://127.0.0.1:{port}/"
     if calisiyor_mu(port):
@@ -754,6 +776,7 @@ def baslat(alan: Path, port: int, tarayici: bool) -> None:
         pencere.ac(adres)
     tepsi.Tepsi(alan, adres, lambda: pencere.ac(adres),
                 lambda: threading.Thread(target=sunucu.shutdown, daemon=True).start(), goster).baslat()
+    _slack_baslat(alan)
     if tarayici:
         threading.Timer(0.6, pencere.ac, (adres,)).start()
     try:
