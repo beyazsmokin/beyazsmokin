@@ -2,7 +2,7 @@
 
 > Bu dosya başka bir YZ ile projeye devam edebilmek için hazırlanmıştır.
 > Okuyunca projeye sıfırdan başlamadan kaldığın yerden devam edebilirsin.
-> Tarih: 9 Ekim 2026 (güncellenmiş)
+> Tarih: 10 Ekim 2026 (güncellenmiş)
 
 ---
 
@@ -428,6 +428,7 @@ kurulmuştur (PR #7). "Metraj Mahal Listesi" poz bazlı metrajdır (oda listesi 
 | #25 | Detaylı analiz İhale Ofisim motoruyla; ilk uçtan uca test tamamlandı |
 | #26 | Panel görsel taşma düzeltmeleri: 12 taşan/kesik metin sorunu (container query, kirp sınıfı, yapışkan sütun kaldırıldı) |
 | #27 | AKTARIM.md ilk sürüm (eksik bilgilerle; bu güncelleme yerine geçer) |
+| #28 | Slack botu: `scripts/slack_bot.py`, `setup/slack-app-manifest.json`, `setup/SLACK-KURULUM.md`; panel.py otomatik başlatma |
 
 ---
 
@@ -456,7 +457,48 @@ Sonraki adım: "Sistemi bilgisayarda test et" thread'inde devam edilecek.
 
 ---
 
-## 13. Yalnızca FAY'ın Yapması Gerekenler
+## 13. Slack Botu (PR #28)
+
+FAY, ihale işlemlerini Slack üzerinden doğal Türkçe ile yürütebilir; komut yok, sadece konuşma.
+
+### Mimari
+
+- **Socket Mode** — FAY'ın bilgisayarında çalışır, dışa açık sunucu gerekmez.
+- **NLU** — Anthropic API (claude-opus-5-5) niyet tanır ve tool_use ile araç seçer.
+- **Araçlar:** takibe al/çıkar, ön inceleme başlat, detaylı analiz başlat, durum sor, liste, ajanda.
+- **Otomatik başlatma** — `panel.py` başlarken Slack token'ları varsa botu arka planda başlatır.
+
+### Dosyalar
+
+| Dosya | Açıklama |
+|-------|----------|
+| `scripts/slack_bot.py` | Ana bot; `python slack_bot.py` ile başlatılır |
+| `setup/slack-app-manifest.json` | FAY'ın Slack'e yapıştıracağı uygulama manifesti |
+| `setup/SLACK-KURULUM.md` | Adım adım kurulum kılavuzu |
+
+### Token Yönetimi (K-10.1)
+
+Token'lar Windows Kimlik Bilgileri Yöneticisi'nde saklanır (`keyring`); hiçbir dosya/loga yazılmaz.
+
+```cmd
+python scripts\slack_bot.py kur --bot-token xoxb-... --app-token xapp-...
+```
+
+### FAY'ın Yapması Gerekenler (Slack)
+
+1. https://api.slack.com/apps → manifest'i yapıştır → token'ları al
+2. `pip install slack-bolt anthropic`
+3. `python slack_bot.py kur --bot-token ... --app-token ...`
+4. Slack kanalında `/invite @ihale-muhendisi`
+
+Sonra normal Türkçe ile konuşulur:
+> "2026/1771435 nolu ihaleyi takibe al, anaokulu onarımı"
+> "ajanda bu hafta"
+> "ön incelemeyi başlat"
+
+---
+
+## 15. Yalnızca FAY'ın Yapması Gerekenler
 
 Bu adımlar asistan tarafından yapılamaz:
 
@@ -472,7 +514,7 @@ Bu adımlar asistan tarafından yapılamaz:
 
 ---
 
-## 14. Temel Kurallar (Bunları Asla İhlal Etme)
+## 16. Temel Kurallar (Bunları Asla İhlal Etme)
 
 | Kural | İçerik |
 |-------|--------|
@@ -483,7 +525,7 @@ Bu adımlar asistan tarafından yapılamaz:
 
 ---
 
-## 15. Kurulum Adımları (FAY'ın Bilgisayarında)
+## 17. Kurulum Adımları (FAY'ın Bilgisayarında)
 
 FAY'ın bilgisayarında kurulum tamamlandı (6 Ekim 2026);
 `Desktop\İhale Analiz\` var, site girişi yapıldı, panel çalışıyor.
@@ -511,7 +553,7 @@ python scripts/siteler.py panel
 
 ---
 
-## 16. Bağlantılar ve Referanslar
+## 18. Bağlantılar ve Referanslar
 
 - **Repo:** https://github.com/beyazsmokin/beyazsmokin
 - **Skill SKILL.md:** `ihale-analiz/SKILL.md` (orkestratör)
@@ -523,5 +565,5 @@ python scripts/siteler.py panel
 ---
 
 *Bu belge Claude (claude.ai) tarafından 9 Ekim 2026 tarihinde hazırlanmış,*
-*aynı gün tam thread taraması yapılarak kapsamlı biçimde güncellenmiştir.*
+*10 Ekim 2026'da Slack botu eklenerek güncellenmiştir (PR #28).*
 *Projeyi devam ettirmek için önce bu dosyayı, sonra `SKILL.md`'yi oku.*

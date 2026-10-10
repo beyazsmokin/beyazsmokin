@@ -1,0 +1,42 @@
+{
+  "_comment": "Bu manifest'i https://api.slack.com/apps > Create New App > From an app manifest adresine yapıştırın.",
+  "display_information": {
+    "name": "İhale Mühendisi",
+    "description": "İhale analiz asistanı — doğal Türkçe ile konuşun",
+    "background_color": "#1a3c6e"
+  },
+  "features": {
+    "bot_user": {
+      "display_name": "ihale-muhendisi",
+      "always_online": true
+    }
+  },
+  "oauth_config": {
+    "scopes": {
+      "bot": [
+        "app_mentions:read",
+        "chat:write",
+        "files:write",
+        "im:history",
+        "im:read",
+        "im:write",
+        "channels:history"
+      ]
+    }
+  },
+  "settings": {
+    "event_subscriptions": {
+      "bot_events": [
+        "app_mention",
+        "message.channels",
+        "message.im"
+      ]
+    },
+    "interactivity": {
+      "is_enabled": false
+    },
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": true,
+    "token_rotation_enabled": false
+  }
+}
